@@ -121,18 +121,99 @@ function showTimeline() {
 }
 
 function showPluginSelector() {
-    const pluginType = prompt("Choose plugin:\n1. errors_only\n2. warnings_only\n3. group_by_resource\n\nEnter number or type:", "1");
-    if (!pluginType) return;
+    const content = `
+        <div class="mb-3">
+            <h5><i class="fas fa-plug me-2"></i>Выберите плагин для анализа</h5>
+        </div>
+        
+        <div class="list-group">
+            <button class="list-group-item list-group-item-action plugin-option" data-plugin="errors_only">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
+                        <strong>Только ошибки</strong>
+                    </div>
+                    <span class="badge bg-danger">Error Filter</span>
+                </div>
+                <small class="text-muted">Фильтрует только логи с уровнем error</small>
+            </button>
+            
+            <button class="list-group-item list-group-item-action plugin-option" data-plugin="warnings_only">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <i class="fas fa-exclamation-circle me-2 text-warning"></i>
+                        <strong>Только предупреждения</strong>
+                    </div>
+                    <span class="badge bg-warning text-dark">Warning Filter</span>
+                </div>
+                <small class="text-muted">Фильтрует только логи с уровнем warning</small>
+            </button>
+            
+            <button class="list-group-item list-group-item-action plugin-option" data-plugin="group_by_resource">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <i class="fas fa-layer-group me-2 text-info"></i>
+                        <strong>Группировка по ресурсам</strong>
+                    </div>
+                    <span class="badge bg-info">Resource Group</span>
+                </div>
+                <small class="text-muted">Группирует логи по типам ресурсов</small>
+            </button>
+            
+            <button class="list-group-item list-group-item-action plugin-option" data-plugin="custom">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <i class="fas fa-cog me-2 text-secondary"></i>
+                        <strong>Пользовательский фильтр</strong>
+                    </div>
+                    <span class="badge bg-secondary">Custom</span>
+                </div>
+                <small class="text-muted">Введите свой тип фильтра</small>
+            </button>
+        </div>
+        
+        <div class="mt-3">
+            <input type="text" id="customPluginInput" class="form-control mb-2" placeholder="Введите тип плагина..." style="display: none;">
+            <button id="applyPluginBtn" class="btn btn-success w-100" disabled>
+                <i class="fas fa-play me-1"></i>Применить плагин
+            </button>
+        </div>
+    `;
     
-    let filterType = "default";
-    switch(pluginType) {
-        case "1": filterType = "errors_only"; break;
-        case "2": filterType = "warnings_only"; break;
-        case "3": filterType = "group_by_resource"; break;
-        default: filterType = pluginType;
-    }
+    createModal('AI Плагины', content);
     
-    currentPluginFilter = filterType;
+    // Добавляем обработчики для выбора плагина
+    document.querySelectorAll('.plugin-option').forEach(btn => {
+        btn.onclick = function() {
+            const pluginType = this.getAttribute('data-plugin');
+            if (pluginType === 'custom') {
+                document.getElementById('customPluginInput').style.display = 'block';
+                document.getElementById('customPluginInput').focus();
+            } else {
+                applyPlugin(pluginType);
+            }
+        };
+    });
+    
+    // Обработчик для пользовательского плагина
+    const customInput = document.getElementById('customPluginInput');
+    const applyBtn = document.getElementById('applyPluginBtn');
+    
+    customInput.oninput = function() {
+        applyBtn.disabled = this.value.trim() === '';
+    };
+    
+    applyBtn.onclick = function() {
+        const customValue = customInput.value.trim();
+        if (customValue) {
+            applyPlugin(customValue);
+        }
+    };
+}
+
+// Функция применения плагина
+function applyPlugin(pluginType) {
+    currentPluginFilter = pluginType;
     applyPluginFilter();
 }
 
@@ -545,28 +626,31 @@ async function expandJson(id) {
 
 function createModal(title, content) {
     const modalHtml = `
-        <div class="modal fade" id="jsonModal" tabindex="-1">
+        <div class="modal fade" id="aiModal" tabindex="-1" aria-labelledby="aiModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">${title}</h5>
+                        <h5 class="modal-title" id="aiModalLabel">${title}</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         ${content}
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
                     </div>
                 </div>
             </div>
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modalElement = document.getElementById('jsonModal');
+    const modalElement = document.getElementById('aiModal');
     const modalInstance = new bootstrap.Modal(modalElement);
     modalInstance.show();
-    modalElement.addEventListener('hidden.bs.modal', () => modalElement.remove());
+    modalElement.addEventListener('hidden.bs.modal', () => {
+        modalElement.remove();
+    });
+    return modalInstance;
 }
 
 async function toggleRead(id) {
