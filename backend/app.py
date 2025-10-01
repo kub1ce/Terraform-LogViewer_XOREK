@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from backend.storage import Storage
 from backend.parser import parse_line
+from backend.ai_analyzer import CustomAIAnalyzer
 from typing import List, Dict
 
 try:
@@ -26,13 +27,14 @@ except ImportError:
 
 app = FastAPI(title="Terraform LogViewer")
 
-
 # static files
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
 
 DB_PATH = "logs.db"
 store = Storage(DB_PATH)
+
+ai_analyzer = CustomAIAnalyzer() 
 
 def call_grpc_plugin(logs: List[Dict], filter_type: str = "default"):
     try:
@@ -64,6 +66,48 @@ def call_grpc_plugin(logs: List[Dict], filter_type: str = "default"):
     except Exception as e:
         print(f"Plugin error: {e}")
         return logs  # Возврат оригинальных данных при ошибке
+
+
+@app.get("/ai/analyze")
+async def ai_analyze(q: str = None, limit: int = 100):
+    """ИИ анализ логов"""
+    try:
+        insights = ai_analyzer.get_ai_insights(query=q, limit=limit)
+        return JSONResponse(insights)
+    except Exception as e:
+        return JSONResponse({
+            "error": str(e),
+            "summary": "AI analysis temporarily unavailable",
+            "issues": [],
+            "recommendations": ["Manual analysis required"],
+            "severity_distribution": {}
+        }, status_code=500)
+
+
+@app.post("/ai/recommend")
+async def ai_recommend(payload: dict):
+    """Получить ИИ рекомендации по конкретной ошибке"""
+    error_text = payload.get('error_text', '')
+    if not error_text:
+        return JSONResponse({"recommendations": ["Please provide error text"]})
+    
+    try:
+        # Mock рекомендации (в реальности это будет ИИ вызов)
+        recommendations = [
+            "Check Terraform configuration files",
+            "Verify provider credentials",
+            "Review resource dependencies",
+            "Increase API rate limits if applicable"
+        ]
+        
+        return JSONResponse({
+            "error": error_text,
+            "recommendations": recommendations,
+            "confidence": 0.9
+        })
+    except Exception as e:
+        return JSONResponse({"error": str(e), "recommendations": []})
+    
 
 @app.get("/")
 async def root():

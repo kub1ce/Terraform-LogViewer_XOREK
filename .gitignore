@@ -5,3 +5,4 @@ logs.db-shm
 logs.db-wal
 */__pycache__/
 test_data/sample_logs.jsonl
+.env

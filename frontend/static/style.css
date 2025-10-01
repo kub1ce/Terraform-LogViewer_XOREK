@@ -48,3 +48,61 @@ i {
     border-radius: 10px;
     backdrop-filter: blur(5px);
 }
+
+/* Стиль для ИИ кнопки - ГРАДИЕНТНЫЙ */
+.btn-ai {
+    background: linear-gradient(135deg, #00c6ff 0%, #00ffa6 100%);
+    border: none;
+    color: rgb(255, 255, 255) !important;
+    font-weight: 500;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.btn-ai:hover {
+    background: linear-gradient(135deg, #00b3e6 0%, #00cc7e 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 114, 255, 0.3);
+}
+
+.btn-ai:focus,
+.btn-ai.focus {
+    background: linear-gradient(135deg, #00a0cc 0%, #00b36e 100%);
+    box-shadow: 0 0 0 0.2rem rgba(0, 114, 255, 0.25) !important;
+    outline: none;
+}
+
+.btn-ai:active {
+    background: linear-gradient(135deg, #008db3 0%, #00998a 100%);
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 114, 255, 0.2);
+}
+
+/* Анимация при наведении */
+.btn-ai::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn-ai:hover::before {
+    left: 100%;
+}
+
+/* Дополнительный эффект при клике */
+.btn-ai:active::before {
+    left: -100%;
+}
+
+/* Для других состояний */
+.btn-ai:disabled {
+    background: linear-gradient(135deg, #80d4ff 0%, #80a8ff 100%);
+    opacity: 0.6;
+    cursor: not-allowed;
+}

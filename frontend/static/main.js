@@ -229,6 +229,137 @@ function showNotification(message, type) {
     };
 }
 
+async function analyzeWithAI() {
+    try {
+        showNotification('AI анализ логов...', 'info');
+        
+        // Получаем текущие логи с учетом фильтров
+        const q = qInput.value;
+        const params = new URLSearchParams();
+        if (q) params.set('q', q);
+        params.set('limit', '100'); // Ограничиваем количество для анализа
+        
+        const r = await fetch(`/ai/analyze?${params.toString()}`);
+        const analysis = await r.json();
+        
+        // Создаем модальное окно как в expandJson
+        const content = `
+            <div class="mb-3">
+                <h5><i class="fas fa-robot me-2"></i>AI Анализ логов</h5>
+            </div>
+            
+            <div class="mb-3">
+                <strong>Резюме:</strong>
+                <p class="bg-light p-2 rounded">${analysis.summary || 'Нет резюме'}</p>
+            </div>
+            
+            <div class="mb-3">
+                <strong>Найденные проблемы:</strong>
+                <ul class="list-group">
+                    ${(analysis.issues || []).map(issue => `
+                        <li class="list-group-item">
+                            <span class="badge bg-${issue.severity === 'высокий' ? 'danger' : issue.severity === 'средний' ? 'warning' : 'secondary'} me-2">${issue.severity}</span>
+                            ${issue.type} (${issue.count})
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <strong>Рекомендации:</strong>
+                <ul class="list-group">
+                    ${(analysis.recommendations || []).map(rec => `
+                        <li class="list-group-item">
+                            <i class="fas fa-lightbulb me-2 text-primary"></i>
+                            ${rec}
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+            
+            <div class="mb-3">
+                <strong>Распределение по уровням:</strong>
+                <pre class="bg-light p-2 rounded">${JSON.stringify(analysis.severity_distribution || {}, null, 2)}</pre>
+            </div>
+            
+            <div class="mb-3">
+                <strong>Уверенность ИИ:</strong>
+                <div class="progress">
+                    <div class="progress-bar" role="progressbar" style="width: ${analysis.confidence ? (analysis.confidence * 100) : 75}%;">
+                        ${(analysis.confidence ? (analysis.confidence * 100) : 75).toFixed(1)}%
+                    </div>
+                </div>
+            </div>
+            
+            ${analysis.raw_response ? `
+                <div>
+                    <strong>Полный ответ ИИ:</strong>
+                    <pre class="bg-light p-2 rounded" style="max-height: 200px; overflow-y: auto;">${analysis.raw_response}</pre>
+                </div>
+            ` : ''}
+        `;
+        
+        createModal('AI Анализ Terraform Логов', content);
+        showNotification('AI анализ завершен', 'success');
+        
+    } catch (error) {
+        showNotification('Ошибка AI анализа: ' + error.message, 'danger');
+    }
+}
+
+function showAINotification(analysis) {
+    const container = document.getElementById('notifications-container');
+    
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-info alert-dismissible fade show mb-2';
+    alert.style.minWidth = '400px';
+    alert.style.maxWidth = '500px';
+    alert.innerHTML = `
+        <div>
+            <h6><i class="fas fa-robot me-2" aria-hidden="true"></i>AI Analysis</h6>
+            <p><strong>Summary:</strong> ${analysis.summary || 'No summary'}</p>
+            <p><strong>Issues Found:</strong> ${analysis.issues?.length || 0}</p>
+            ${analysis.recommendations ? `
+                <p><strong>Recommendations:</strong></p>
+                <ul class="mb-0">
+                    ${analysis.recommendations.slice(0, 3).map(rec => `<li>${rec}</li>`).join('')}
+                </ul>
+            ` : ''}
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" style="position: absolute; right: 10px; top: 10px;" aria-label="Close"></button>
+    `;
+    
+    container.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+            bsAlert.close();
+        }
+    }, 10000);
+    
+    alert.querySelector('.btn-close').onclick = () => {
+        const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+        bsAlert.close();
+    };
+}
+
+// Функция для получения рекомендаций по конкретной ошибке
+async function getAIRecommendations(errorText) {
+    try {
+        const r = await fetch('/ai/recommend', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({error_text: errorText})
+        });
+        const response = await r.json();
+        return response.recommendations || [];
+    } catch (error) {
+        console.error('AI recommendations error:', error);
+        return [];
+    }
+}
+
 function groupBy(arr, keyFn) {
     const map = new Map();
     arr.forEach(item => {
@@ -464,4 +595,25 @@ document.addEventListener('DOMContentLoaded', () => {
     window.groupStates = {};
     updateUnreadButton();
     search();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализируем состояние групп
+    window.groupStates = {};
+    updateUnreadButton();
+    search();
+    
+    // Добавляем кнопку ИИ к другим кнопкам
+    const aiBtn = document.createElement('button');
+    aiBtn.id = 'btnAI';
+    aiBtn.className = 'btn btn-ai me-2'; // Новый класс для ИИ кнопки
+    aiBtn.innerHTML = '<i class="fas fa-robot me-1" aria-hidden="true"></i>AI Analysis';
+    aiBtn.onclick = () => analyzeWithAI();
+    aiBtn.setAttribute('aria-label', 'Запустить AI анализ логов');
+    
+    // Вставляем перед первой кнопкой
+    const buttonRow = document.querySelector('.col-12');
+    if (buttonRow) {
+        buttonRow.insertBefore(aiBtn, buttonRow.firstChild);
+    }
 });
