@@ -25,6 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_logs_tf_req_id ON logs(tf_req_id);
 CREATE INDEX IF NOT EXISTS idx_logs_ts ON logs(ts);
 CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level);
 CREATE INDEX IF NOT EXISTS idx_logs_tf_resource ON logs(tf_resource);
+CREATE INDEX IF NOT EXISTS idx_logs_section ON logs(section);
 """
 
 class Storage:
@@ -57,7 +58,7 @@ class Storage:
         return [{'id': r[0], 'body_type': r[1], 'body_json': r[2]} for r in rows]
 
 
-    def search(self, q: str = None, level: str = None, resource: str = None, tf_req_id: str = None, ts_from: str = None, ts_to: str = None, unread_only: bool = False, limit: int = 500) -> List[Dict]:
+    def search(self, q: str = None, level: str = None, resource: str = None, tf_req_id: str = None, ts_from: str = None, ts_to: str = None, unread_only: bool = False, section: str = None, limit: int = 500) -> List[Dict]:
         where = []
         params = []
         sql = "SELECT id, raw_json, ts, level, tf_req_id, tf_resource, section, text_excerpt, read_flag FROM logs"
@@ -67,7 +68,7 @@ class Storage:
             params += [f"%{q}%", f"%{q}%"]
         if level:
             where.append("level = ?"); params.append(level)
-        if resource: # Теперь можно искать по tf_resource_type
+        if resource:  # Теперь можно искать по tf_resource_type
             where.append("tf_resource LIKE ?"); params.append(f"%{resource}%")
         if tf_req_id:
             where.append("tf_req_id = ?"); params.append(tf_req_id)
@@ -75,6 +76,8 @@ class Storage:
             where.append("ts >= ?"); params.append(ts_from)
         if ts_to:
             where.append("ts <= ?"); params.append(ts_to)
+        if section:  # Добавляем фильтр по секции
+            where.append("section = ?"); params.append(section)
         if unread_only:
             where.append("read_flag = 0")
         
@@ -88,6 +91,20 @@ class Storage:
         rows = cur.fetchall()
         cols = [c[0] for c in cur.description]
         return [dict(zip(cols, r)) for r in rows]
+
+
+    def get_sections_summary(self) -> List[Dict]:
+        """Получить сводку по секциям"""
+        cur = self.conn.cursor()
+        cur.execute("""
+            SELECT section, COUNT(*) as count, MIN(ts) as start_time, MAX(ts) as end_time
+            FROM logs 
+            WHERE section IS NOT NULL 
+            GROUP BY section
+            ORDER BY start_time
+        """)
+        rows = cur.fetchall()
+        return [{'section': r[0], 'count': r[1], 'start_time': r[2], 'end_time': r[3]} for r in rows]
 
 
     def mark_read(self, ids: List[int]):

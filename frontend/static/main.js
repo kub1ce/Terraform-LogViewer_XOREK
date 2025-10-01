@@ -187,3 +187,29 @@ async function applyPluginFilter() {
     document.getElementById('gantt-container').style.display = 'none';
     render(arr);
 }
+
+const sectionsBtn = document.createElement('button');
+sectionsBtn.id = 'btnSections';
+sectionsBtn.textContent = 'Show Sections';
+sectionsBtn.onclick = showSections;
+document.querySelector('.filters').appendChild(sectionsBtn);
+
+async function showSections() {
+    const r = await fetch('/sections');
+    const sections = await r.json();
+    
+    let html = '<h3>Sections Summary</h3><table border="1" style="width:100%; border-collapse: collapse;">';
+    html += '<tr><th>Section</th><th>Count</th><th>Start Time</th><th>End Time</th></tr>';
+    
+    sections.forEach(s => {
+        html += `<tr>
+            <td>${s.section}</td>
+            <td>${s.count}</td>
+            <td>${s.start_time}</td>
+            <td>${s.end_time}</td>
+        </tr>`;
+    });
+    
+    html += '</table>';
+    document.getElementById('results').innerHTML = html;
+}

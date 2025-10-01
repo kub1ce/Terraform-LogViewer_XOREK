@@ -118,6 +118,11 @@ async def search(q: str = None, level: str = None, tf_resource: str = None, tf_r
     rows = store.search(q=q, level=level, resource=tf_resource, tf_req_id=tf_req_id, ts_from=ts_from, ts_to=ts_to, unread_only=bool(unread), limit=limit)
     return rows
 
+@app.get("/sections")
+async def get_sections():
+    """Получить сводку по секциям (plan/apply)"""
+    sections = store.get_sections_summary()
+    return JSONResponse(sections)
 
 @app.post("/mark_read")
 async def mark_read(payload: dict):
