@@ -3,8 +3,6 @@ from pathlib import Path
 import sys
 import os
 
-# Добавь путь к плагинам
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
