@@ -1,0 +1,5 @@
+.venv/
+requirements_backup.txt
+logs.db
+*/__pycache__/
+test_data/sample_logs.jsonl

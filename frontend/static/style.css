@@ -1,0 +1,13 @@
+body { font-family: Arial, sans-serif; background: #f6f7fb; margin: 20px; }
+.container { max-width: 1000px; margin: auto; background: white; padding: 18px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.upload { margin-bottom: 12px; }
+.filters { margin-bottom: 12px; }
+.group { border-top: 1px solid #eee; padding: 8px 0; }
+.line { padding: 8px; margin: 6px 0; border-radius: 6px; background: #fafafa; }
+.line.error { border-left: 6px solid #c62828; }
+.line.warning { border-left: 6px solid #f9a825; }
+.line.info { border-left: 6px solid #2e7d32; }
+.meta { color: #666; font-size: 12px; }
+.excerpt { margin-top: 6px; white-space: pre-wrap; font-family: monospace; font-size: 13px; }
+.actions { margin-top: 8px; }
+button { cursor: pointer; }

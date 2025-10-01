@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Terraform LogViewer</title>
+    <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+    <div class="container">
+        <h1>Terraform LogViewer — Prototype [XOREK]</h1>
+        
+        <div class="upload">
+            <input id="file" type="file" />
+            <button id="btnUpload">Upload</button>
+        </div>
+
+        <div class="filters">
+            <input id="q" placeholder="Search text..." />
+            <select id="level">
+                <option value="">-- level --</option>
+                <option value="error">error</option>
+                <option value="warning">warning</option>
+                <option value="info">info</option>
+                <option value="debug">debug</option>
+            </select>
+            <input id="tf_req_id" placeholder="tf_req_id" />
+            <input id="tf_resource" placeholder="tf_resource" />
+            <button id="btnSearch">Search</button>
+            <button id="btnUnread">Toggle Unread</button>
+            <button id="btnGantt">Show Timeline</button>
+        </div>
+
+        <div id="summary"></div>
+        <div id="gantt-container" style="display:none;"></div>
+        <div id="results"></div>
+    </div>
+
+    <script src="/static/main.js"></script>
+</body>
+</html>
