@@ -28,6 +28,7 @@ async function search() {
   const tf_resource = document.getElementById('tf_resource').value;
   const ts_from = document.getElementById('ts_from').value;
   const ts_to = document.getElementById('ts_to').value;
+  const section = document.getElementById('section').value;
   
   const params = new URLSearchParams();
   if (q) params.set('q', q);
@@ -36,6 +37,7 @@ async function search() {
   if (tf_resource) params.set('tf_resource', tf_resource);
   if (ts_from) params.set('ts_from', ts_from);
   if (ts_to) params.set('ts_to', ts_to);
+  if (section) params.set('section', section);
   if (unreadOnly) params.set('unread', '1');
   
   const r = await fetch('/search?' + params.toString());
