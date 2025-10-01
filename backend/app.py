@@ -1,10 +1,28 @@
 import json
 from pathlib import Path
+import sys
+import os
+
+# Добавь путь к плагинам
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from backend.storage import Storage
 from backend.parser import parse_line
+from typing import List, Dict
+
+# Импортируй gRPC плагины
+try:
+    import grpc
+    import plugins.plugin_pb2 as plugin_pb2
+    import plugins.plugin_pb2_grpc as plugin_pb2_grpc
+    GRPC_AVAILABLE = True
+except ImportError:
+    GRPC_AVAILABLE = False
+    print("gRPC not available - install grpcio and generate proto files")
+
 
 
 app = FastAPI(title="Terraform LogViewer")
@@ -17,6 +35,36 @@ app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 DB_PATH = "logs.db"
 store = Storage(DB_PATH)
 
+def call_grpc_plugin(logs: List[Dict], filter_type: str = "default"):
+    try:
+        channel = grpc.insecure_channel('localhost:50051')
+        stub = plugin_pb2_grpc.LogProcessorStub(channel)
+        
+        request_logs = []
+        for log in logs:
+            entry = plugin_pb2.LogEntry(
+                id=log.get('id', 0),
+                raw_json=log.get('raw_json', ''),
+                ts=log.get('ts', ''),
+                level=log.get('level', ''),
+                tf_req_id=log.get('tf_req_id', ''),
+                tf_resource=log.get('tf_resource', ''),
+                section=log.get('section', ''),
+                text_excerpt=log.get('text_excerpt', '')
+            )
+            request_logs.append(entry)
+        
+        request = plugin_pb2.LogRequest(
+            logs=request_logs,
+            filter_type=filter_type
+        )
+        
+        response = stub.ProcessLogs(request)
+        return [{'id': entry.id, 'level': entry.level, 'text_excerpt': entry.text_excerpt} 
+                for entry in response.filtered_logs]
+    except Exception as e:
+        print(f"Plugin error: {e}")
+        return logs  # Возврат оригинальных данных при ошибке
 
 @app.get("/")
 async def root():
@@ -96,3 +144,16 @@ async def export(q: str = None, level: str = None, tf_req_id: str = None):
         for r in rows:
             f.write(r['raw_json'] + "\n")
     return FileResponse(str(path), media_type='application/octet-stream', filename='export.jsonl')
+
+
+@app.post("/plugin/process")
+async def process_with_plugin(payload: dict):
+    # Получаем логи из базы
+    q = payload.get('search_query', '')
+    logs = store.search(q=q, limit=1000)
+    
+    # Обрабатываем через плагин
+    filter_type = payload.get('filter_type', 'default')
+    processed_logs = call_grpc_plugin(logs, filter_type)
+    
+    return {"processed_count": len(processed_logs), "summary": f"Applied {filter_type}"}

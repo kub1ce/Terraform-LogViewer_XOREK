@@ -65,10 +65,19 @@ def detect_section(s: str) -> Optional[str]:
     if not s:
         return None
     low = s.lower()
+    
+    # План
     if 'terraform plan' in low or '\nplan:' in low or ' plan ' in low:
         return 'plan'
+    # Применение  
     if 'terraform apply' in low or '\napply:' in low or ' apply ' in low:
         return 'apply'
+    # Начало/конец операций
+    if 'starting' in low and ('plan' in low or 'apply' in low):
+        return 'start'
+    if ('completed' in low or 'finished' in low) and ('plan' in low or 'apply' in low):
+        return 'end'
+    
     return None
 
 def extract_tf_req_id(obj: Dict, text: str) -> Optional[str]:

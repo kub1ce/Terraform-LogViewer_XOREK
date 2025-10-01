@@ -163,3 +163,13 @@ async function markRead(id) {
   await fetch('/mark_read', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ids:[id]}) });
   search();
 }
+
+async function testPlugin() {
+  const r = await fetch('/plugin/process', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({filter_type: 'errors_only'})
+  });
+  const result = await r.json();
+  console.log(result);
+}

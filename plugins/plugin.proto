@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package plugin;
+
+service LogProcessor {
+  rpc ProcessLogs(LogRequest) returns (LogResponse);
+}
+
+message LogRequest {
+  repeated LogEntry logs = 1;
+  string filter_type = 2;
+  map<string, string> parameters = 3;
+}
+
+message LogEntry {
+  int32 id = 1;
+  string raw_json = 2;
+  string ts = 3;
+  string level = 4;
+  string tf_req_id = 5;
+  string tf_resource = 6;
+  string section = 7;
+  string text_excerpt = 8;
+}
+
+message LogResponse {
+  repeated LogEntry filtered_logs = 1;
+  string summary = 2;
+}
