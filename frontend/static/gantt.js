@@ -1,40 +1,97 @@
 function renderGantt(data) {
     const container = document.getElementById('gantt-container');
-    container.innerHTML = '<h3>Timeline Visualization</h3><div id="gantt-chart"></div>';
+    container.innerHTML = `
+        <h3>Timeline Visualization</h3>
+        <div id="gantt-header" style="display:flex; height:30px; margin-bottom:5px;">
+            <div style="width:200px;">Request ID</div>
+            <div style="flex:1; position:relative;">Timeline</div>
+        </div>
+        <div id="gantt-chart" style="height:400px; overflow-y:auto; border:1px solid #ccc; position:relative;"></div>
+    `;
     
-    // ? переделать
     const chart = document.getElementById('gantt-chart');
-    chart.style.height = '400px';
-    chart.style.border = '1px solid #ccc';
-    chart.style.position = 'relative';
-    chart.style.overflowX = 'auto';
+    chart.innerHTML = '';
     
-    // Найти минимальное и максимальное время
-    const times = data.filter(item => item.ts).map(item => new Date(item.ts));
-    if (times.length === 0) return;
+    // Группируем по tf_req_id
+    const groups = groupBy(data, item => item.tf_req_id || 'unknown');
     
-    const minTime = Math.min(...times);
-    const maxTime = Math.max(...times);
-    const totalDuration = maxTime - minTime;
-    
-    data.forEach((item, index) => {
-        if (!item.ts) return;
+    let row = 0;
+    groups.forEach((items, reqId) => {
+        if (!items[0].ts) return; // Пропускаем без времени
         
-        const startTime = new Date(item.ts);
-        const position = ((startTime - minTime) / totalDuration) * 100;
+        // Найти начало и конец для этой группы
+        const times = items.filter(i => i.ts).map(i => new Date(i.ts));
+        if (times.length === 0) return;
         
-        const bar = document.createElement('div');
-        bar.style.position = 'absolute';
-        bar.style.left = position + '%';
-        bar.style.top = (index * 25) + 'px';
-        bar.style.width = '4px';
-        bar.style.height = '20px';
-        bar.style.backgroundColor = getColorForLevel(item.level);
-        bar.style.borderRadius = '2px';
-        bar.title = `${item.level} - ${item.ts}`;
+        const minTime = Math.min(...times);
+        const maxTime = Math.max(...times);
         
-        chart.appendChild(bar);
+        // Создаем строку для группы
+        const groupDiv = document.createElement('div');
+        groupDiv.style.cssText = `
+            display:flex; 
+            height:40px; 
+            border-bottom:1px solid #eee; 
+            align-items:center;
+            margin-bottom:2px;
+        `;
+        
+        const idDiv = document.createElement('div');
+        idDiv.style.cssText = 'width:200px; padding:5px; font-size:12px;';
+        idDiv.textContent = reqId;
+        
+        const timelineDiv = document.createElement('div');
+        timelineDiv.style.cssText = 'flex:1; position:relative; height:100%;';
+        
+        // Рассчитываем временные метки
+        const allTimes = data.filter(i => i.ts).map(i => new Date(i.ts));
+        const globalMin = Math.min(...allTimes);
+        const globalMax = Math.max(...allTimes);
+        const totalDuration = globalMax - globalMin;
+        
+        // Добавляем элементы для каждого лога в группе
+        items.forEach(item => {
+            if (!item.ts) return;
+            
+            const startTime = new Date(item.ts);
+            const position = ((startTime - globalMin) / totalDuration) * 100;
+            const width = 2; // ширина бара в %
+            
+            const bar = document.createElement('div');
+            bar.style.cssText = `
+                position:absolute;
+                left:${position}%;
+                top:10px;
+                width:${width}px;
+                height:20px;
+                background-color:${getColorForLevel(item.level)};
+                border-radius:2px;
+                cursor:pointer;
+            `;
+            bar.title = `${item.level} - ${item.ts} - ${item.text_excerpt?.substring(0, 50) || ''}`;
+            bar.onclick = () => showLogDetails(item);
+            
+            timelineDiv.appendChild(bar);
+        });
+        
+        groupDiv.appendChild(idDiv);
+        groupDiv.appendChild(timelineDiv);
+        chart.appendChild(groupDiv);
+        
+        row++;
     });
+}
+
+function showLogDetails(log) {
+    const details = `
+ID: ${log.id}
+Level: ${log.level}
+Time: ${log.ts}
+Request: ${log.tf_req_id}
+Resource: ${log.tf_resource}
+Text: ${log.text_excerpt}
+    `;
+    alert(details);
 }
 
 function getColorForLevel(level) {
@@ -45,4 +102,14 @@ function getColorForLevel(level) {
         'debug': '#1976d2'
     };
     return colors[level] || '#666';
+}
+
+function groupBy(arr, keyFn) {
+  const map = new Map();
+  arr.forEach(item => {
+    const k = keyFn(item);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(item);
+  });
+  return map;
 }

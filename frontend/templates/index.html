@@ -25,9 +25,12 @@
             </select>
             <input id="tf_req_id" placeholder="tf_req_id" />
             <input id="tf_resource" placeholder="tf_resource" />
+            <input id="ts_from" type="datetime-local" placeholder="From (YYYY-MM-DD HH:MM)" />
+            <input id="ts_to" type="datetime-local" placeholder="To (YYYY-MM-DD HH:MM)" />
             <button id="btnSearch">Search</button>
             <button id="btnUnread">Toggle Unread</button>
             <button id="btnGantt">Show Timeline</button>
+            <!-- <button id="btnPlugin">Test Plugin</button> -->
         </div>
 
         <div id="summary"></div>
@@ -36,5 +39,6 @@
     </div>
 
     <script src="/static/main.js"></script>
+    <script src="/static/gantt.js"></script>
 </body>
 </html>

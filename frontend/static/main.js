@@ -2,6 +2,7 @@ const uploadBtn = document.getElementById('btnUpload');
 const searchBtn = document.getElementById('btnSearch');
 const unreadBtn = document.getElementById('btnUnread');
 const ganttBtn = document.getElementById('btnGantt');
+const pluginBtn = document.getElementById('btnPlugin');
 let unreadOnly = false;
 
 uploadBtn.onclick = async () => {
@@ -16,6 +17,7 @@ uploadBtn.onclick = async () => {
 
 searchBtn.onclick = () => search();
 ganttBtn.onclick = () => showTimeline();
+pluginBtn.onclick = () => testPlugin();
 unreadBtn.onclick = () => { unreadOnly = !unreadOnly; search(); }
 
 async function search() {
@@ -23,12 +25,16 @@ async function search() {
   const level = document.getElementById('level').value;
   const tf_req_id = document.getElementById('tf_req_id').value;
   const tf_resource = document.getElementById('tf_resource').value;
+  const ts_from = document.getElementById('ts_from').value;
+  const ts_to = document.getElementById('ts_to').value;
   
   const params = new URLSearchParams();
   if (q) params.set('q', q);
   if (level) params.set('level', level);
   if (tf_req_id) params.set('tf_req_id', tf_req_id);
   if (tf_resource) params.set('tf_resource', tf_resource);
+  if (ts_from) params.set('ts_from', ts_from);
+  if (ts_to) params.set('ts_to', ts_to);
   if (unreadOnly) params.set('unread', '1');
   
   const r = await fetch('/search?' + params.toString());
@@ -39,7 +45,7 @@ async function search() {
 
 async function showTimeline() {
   const params = new URLSearchParams();
-  params.set('limit', '1000'); // Получить больше данных для диаграммы
+  params.set('limit', '1000');
   
   const r = await fetch('/search?' + params.toString());
   const arr = await r.json();
@@ -48,55 +54,17 @@ async function showTimeline() {
   renderGantt(arr);
 }
 
-function renderGantt(data) {
-    const container = document.getElementById('gantt-container');
-    container.innerHTML = '<h3>Timeline Visualization</h3><div id="gantt-chart"></div>';
-    
-    const chart = document.getElementById('gantt-chart');
-    chart.style.height = '400px';
-    chart.style.border = '1px solid #ccc';
-    chart.style.position = 'relative';
-    chart.style.overflowX = 'auto';
-    
-    // Найти минимальное и максимальное время
-    const times = data.filter(item => item.ts).map(item => new Date(item.ts));
-    if (times.length === 0) {
-        chart.innerHTML = '<p>No timestamp data available</p>';
-        return;
-    }
-    
-    const minTime = Math.min(...times);
-    const maxTime = Math.max(...times);
-    const totalDuration = maxTime - minTime;
-    
-    data.forEach((item, index) => {
-        if (!item.ts) return;
-        
-        const startTime = new Date(item.ts);
-        const position = ((startTime - minTime) / totalDuration) * 100;
-        
-        const bar = document.createElement('div');
-        bar.style.position = 'absolute';
-        bar.style.left = position + '%';
-        bar.style.top = (index * 25) + 'px';
-        bar.style.width = '4px';
-        bar.style.height = '20px';
-        bar.style.backgroundColor = getColorForLevel(item.level);
-        bar.style.borderRadius = '2px';
-        bar.title = `${item.level} - ${item.ts} - ${item.tf_resource || ''}`;
-        
-        chart.appendChild(bar);
-    });
-}
-
-function getColorForLevel(level) {
-    const colors = {
-        'error': '#d32f2f',
-        'warning': '#f57c00', 
-        'info': '#388e3c',
-        'debug': '#1976d2'
-    };
-    return colors[level] || '#666';
+async function testPlugin() {
+  const r = await fetch('/plugin/process', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      filter_type: 'errors_only',
+      search_query: ''
+    })
+  });
+  const result = await r.json();
+  alert(`Plugin result: ${result.summary}`);
 }
 
 function groupBy(arr, keyFn) {
@@ -162,14 +130,4 @@ async function expandJson(id) {
 async function markRead(id) {
   await fetch('/mark_read', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ids:[id]}) });
   search();
-}
-
-async function testPlugin() {
-  const r = await fetch('/plugin/process', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({filter_type: 'errors_only'})
-  });
-  const result = await r.json();
-  console.log(result);
 }
