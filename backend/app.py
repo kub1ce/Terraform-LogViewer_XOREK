@@ -68,7 +68,7 @@ async def upload(file: UploadFile = File(...)):
 @app.get("/search")
 async def search(q: str = None, level: str = None, tf_resource: str = None, tf_req_id: str = None, ts_from: str = None, ts_to: str = None, unread: int = 0, limit: int = 500):
     rows = store.search(q=q, level=level, resource=tf_resource, tf_req_id=tf_req_id, ts_from=ts_from, ts_to=ts_to, unread_only=bool(unread), limit=limit)
-    return JSONResponse(rows)
+    return rows
 
 
 @app.post("/mark_read")
