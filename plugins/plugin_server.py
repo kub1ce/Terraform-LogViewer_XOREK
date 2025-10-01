@@ -1,12 +1,19 @@
 import grpc
 from concurrent import futures
+import sys
+import os
+
+# Добавь путь к текущей директории
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Импортируй proto файлы
 import plugin_pb2
 import plugin_pb2_grpc
-import json
-from typing import List, Dict
 
 class LogProcessorServicer(plugin_pb2_grpc.LogProcessorServicer):
     def ProcessLogs(self, request, context):
+        print(f"Received request with {len(request.logs)} logs, filter: {request.filter_type}")
+        
         logs = []
         for entry in request.logs:
             log_dict = {
@@ -24,9 +31,9 @@ class LogProcessorServicer(plugin_pb2_grpc.LogProcessorServicer):
         # Пример фильтрации: только ошибки
         if request.filter_type == "errors_only":
             filtered = [log for log in logs if log.get('level') == 'error']
+        elif request.filter_type == "warnings_only":
+            filtered = [log for log in logs if log.get('level') == 'warning']
         elif request.filter_type == "group_by_resource":
-            # Группировка по ресурсам
-            summary = f"Grouped {len(logs)} logs by resource"
             filtered = logs
         else:
             filtered = logs
@@ -45,7 +52,8 @@ class LogProcessorServicer(plugin_pb2_grpc.LogProcessorServicer):
             )
             response.filtered_logs.append(entry)
         
-        response.summary = f"Processed {len(logs)} logs, returned {len(filtered)}"
+        response.summary = f"Processed {len(logs)} logs, returned {len(filtered)} (filter: {request.filter_type})"
+        print(f"Returning {len(filtered)} logs")
         return response
 
 def serve():
@@ -54,6 +62,7 @@ def serve():
     server.add_insecure_port('[::]:50051')
     server.start()
     print("gRPC Plugin Server started on port 50051")
+    print("Ready to accept connections...")
     server.wait_for_termination()
 
 if __name__ == '__main__':

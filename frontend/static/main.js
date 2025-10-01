@@ -2,8 +2,9 @@ const uploadBtn = document.getElementById('btnUpload');
 const searchBtn = document.getElementById('btnSearch');
 const unreadBtn = document.getElementById('btnUnread');
 const ganttBtn = document.getElementById('btnGantt');
-const pluginBtn = document.getElementById('btnPlugin');
+const pluginBtn = document.getElementById('btnPlugins');
 let unreadOnly = false;
+let currentPluginFilter = null;
 
 uploadBtn.onclick = async () => {
   const f = document.getElementById('file').files[0];
@@ -55,16 +56,20 @@ async function showTimeline() {
 }
 
 async function testPlugin() {
-  const r = await fetch('/plugin/process', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      filter_type: 'errors_only',
-      search_query: ''
-    })
-  });
-  const result = await r.json();
-  alert(`Plugin result: ${result.summary}`);
+  try {
+    const r = await fetch('/plugin/process', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        filter_type: 'errors_only',
+        search_query: ''
+      })
+    });
+    const result = await r.json();
+    alert(`Plugin result: ${result.summary}`);
+  } catch (error) {
+    alert('Plugin error: ' + error.message);
+  }
 }
 
 function groupBy(arr, keyFn) {
@@ -130,4 +135,55 @@ async function expandJson(id) {
 async function markRead(id) {
   await fetch('/mark_read', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ids:[id]}) });
   search();
+}
+
+pluginBtn.onclick = () => showPluginSelector();
+
+// Функция выбора плагина
+function showPluginSelector() {
+    const pluginType = prompt("Choose plugin:\n1. errors_only\n2. warnings_only\n3. group_by_resource\n\nEnter number or type:", "1");
+    
+    let filterType = "default";
+    switch(pluginType) {
+        case "1": filterType = "errors_only"; break;
+        case "2": filterType = "warnings_only"; break;
+        case "3": filterType = "group_by_resource"; break;
+        default: filterType = pluginType;
+    }
+    
+    currentPluginFilter = filterType;
+    applyPluginFilter();
+}
+
+// Применить фильтр плагина
+async function applyPluginFilter() {
+    if (!currentPluginFilter) return;
+    
+    const r = await fetch('/plugin/process', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            filter_type: currentPluginFilter,
+            search_query: document.getElementById('q').value
+        })
+    });
+    
+    const result = await r.json();
+    alert(result.summary);
+    
+    // Показать результаты с учетом фильтра
+    const params = new URLSearchParams();
+    params.set('limit', '1000');
+    
+    // Если фильтр по ошибкам - ищем только ошибки
+    if (currentPluginFilter === 'errors_only') {
+        params.set('level', 'error');
+    } else if (currentPluginFilter === 'warnings_only') {
+        params.set('level', 'warning');
+    }
+    
+    const searchR = await fetch('/search?' + params.toString());
+    const arr = await searchR.json();
+    document.getElementById('gantt-container').style.display = 'none';
+    render(arr);
 }

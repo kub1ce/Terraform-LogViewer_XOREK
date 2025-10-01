@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import plugin_pb2 as plugins_dot_plugin__pb2
+import plugin_pb2 as plugin__pb2
 
 GRPC_GENERATED_VERSION = '1.75.1'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in plugins/plugin_pb2_grpc.py depends on'
+        + f' but the generated code in plugin_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,8 +36,8 @@ class LogProcessorStub(object):
         """
         self.ProcessLogs = channel.unary_unary(
                 '/plugin.LogProcessor/ProcessLogs',
-                request_serializer=plugins_dot_plugin__pb2.LogRequest.SerializeToString,
-                response_deserializer=plugins_dot_plugin__pb2.LogResponse.FromString,
+                request_serializer=plugin__pb2.LogRequest.SerializeToString,
+                response_deserializer=plugin__pb2.LogResponse.FromString,
                 _registered_method=True)
 
 
@@ -55,8 +55,8 @@ def add_LogProcessorServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'ProcessLogs': grpc.unary_unary_rpc_method_handler(
                     servicer.ProcessLogs,
-                    request_deserializer=plugins_dot_plugin__pb2.LogRequest.FromString,
-                    response_serializer=plugins_dot_plugin__pb2.LogResponse.SerializeToString,
+                    request_deserializer=plugin__pb2.LogRequest.FromString,
+                    response_serializer=plugin__pb2.LogResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -84,8 +84,8 @@ class LogProcessor(object):
             request,
             target,
             '/plugin.LogProcessor/ProcessLogs',
-            plugins_dot_plugin__pb2.LogRequest.SerializeToString,
-            plugins_dot_plugin__pb2.LogResponse.FromString,
+            plugin__pb2.LogRequest.SerializeToString,
+            plugin__pb2.LogResponse.FromString,
             options,
             channel_credentials,
             insecure,
