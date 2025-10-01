@@ -1,51 +1,141 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>Terraform LogViewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terraform LogViewer - XOREK Team</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/style.css" />
 </head>
-<body>
+<body class="bg-light">
+    <!-- Водяной знак -->
+    <div class="watermark-overlay"></div>
+    
+    <!-- Notifications container - ДОЛЖЕН БЫТЬ ПЕРВЫМ, чтобы быть поверх всего -->
+    <div id="notifications-container"></div>
+    
     <div class="container">
-        <h1>Terraform LogViewer — Prototype [XOREK]</h1>
-        
-        <div class="upload">
-            <input id="file" type="file" />
-            <button id="btnUpload">Upload</button>
-        </div>
+        <div class="row justify-content-center">
+            <div class="col-lg-10 col-xl-8">
+                <div class="card shadow-lg mt-4">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0 text-center">
+                            <i class="fas fa-file-alt me-2" aria-hidden="true"></i>
+                            Terraform LogViewer
+                        </h3>
+                        <p class="mb-0 text-center text-light opacity-75">
+                            <strong>XOREK Team</strong> - Analysis and Visualization Tool
+                        </p>
+                    </div>
+                    
+                    <div class="card-body">
+                        <!-- Upload Section -->
+                        <div class="mb-4">
+                            <label for="file" class="form-label fw-bold">Upload Log File</label>
+                            <div class="input-group">
+                                <input id="file" type="file" class="form-control" accept=".log,.json,.txt" aria-label="Upload log file" />
+                                <button id="btnUpload" class="btn btn-primary" aria-label="Upload selected file">
+                                    <i class="fas fa-upload me-1" aria-hidden="true"></i>Upload
+                                </button>
+                            </div>
+                        </div>
 
-        <div class="filters">
-            <input id="q" placeholder="Search text..." />
-            <select id="level">
-                <option value="">-- level --</option>
-                <option value="error">error</option>
-                <option value="warning">warning</option>
-                <option value="info">info</option>
-                <option value="debug">debug</option>
-            </select>
-            <input id="tf_req_id" placeholder="tf_req_id" />
-            <input id="tf_resource" placeholder="tf_resource" />
-            <input id="ts_from" type="datetime-local" placeholder="From (YYYY-MM-DD HH:MM)" />
-            <input id="ts_to" type="datetime-local" placeholder="To (YYYY-MM-DD HH:MM)" />
-            <select id="section">
-                <option value="">-- section --</option>
-                <option value="plan">plan</option>
-                <option value="apply">apply</option>
-                <option value="start">start</option>
-                <option value="end">end</option>
-                <option value="refresh">refresh</option>
-            </select>
-            <button id="btnSearch">Search</button>
-            <button id="btnUnread">Toggle Unread</button>
-            <button id="btnGantt">Show Timeline</button>
-            <button id="btnPlugins">Plugin Filters</button>
-        </div>
+                        <!-- Filters Section -->
+                        <div class="card mb-4 border">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-filter me-2" aria-hidden="true"></i>Search & Filters
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="q" class="form-label">Search Text</label>
+                                        <input id="q" placeholder="Enter search terms..." class="form-control" aria-label="Search text" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="level" class="form-label">Log Level</label>
+                                        <select id="level" class="form-select" aria-label="Log level filter">
+                                            <option value="">All Levels</option>
+                                            <option value="error">Error</option>
+                                            <option value="warning">Warning</option>
+                                            <option value="info">Info</option>
+                                            <option value="debug">Debug</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="tf_req_id" class="form-label">Request ID</label>
+                                        <input id="tf_req_id" placeholder="Request ID" class="form-control" aria-label="Request ID filter" />
+                                    </div>
+                                </div>
+                                
+                                <div class="row g-3 mt-2">
+                                    <div class="col-md-3">
+                                        <label for="tf_resource" class="form-label">Resource</label>
+                                        <input id="tf_resource" placeholder="Resource type" class="form-control" aria-label="Resource type filter" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="ts_from" class="form-label">From Time</label>
+                                        <input id="ts_from" type="datetime-local" class="form-control" aria-label="Start time filter" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="ts_to" class="form-label">To Time</label>
+                                        <input id="ts_to" type="datetime-local" class="form-control" aria-label="End time filter" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="section" class="form-label">Section</label>
+                                        <select id="section" class="form-select" aria-label="Section filter">
+                                            <option value="">All Sections</option>
+                                            <option value="plan">Plan</option>
+                                            <option value="apply">Apply</option>
+                                            <option value="start">Start</option>
+                                            <option value="end">End</option>
+                                            <option value="refresh">Refresh</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="row g-2 mt-3">
+                                    <div class="col-12">
+                                        <button id="btnGantt" class="btn btn-info me-2" aria-label="Show timeline">
+                                            <i class="fas fa-chart-bar me-1" aria-hidden="true"></i>Timeline
+                                        </button>
+                                        <button id="btnUnread" class="btn btn-outline-secondary me-2" aria-label="Toggle unread filter">
+                                            <i class="fas fa-eye-slash me-1" aria-hidden="true"></i>Show Unread Only
+                                        </button>
+                                        <button id="btnPlugins" class="btn btn-warning me-2" aria-label="Apply plugin filters">
+                                            <i class="fas fa-plug me-1" aria-hidden="true"></i>Plugin Filters
+                                        </button>
+                                        <button id="btnSections" class="btn btn-secondary" aria-label="Show sections summary">
+                                            <i class="fas fa-list me-1" aria-hidden="true"></i>Show Sections
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-        <div id="summary"></div>
-        <div id="gantt-container" style="display:none;"></div>
-        <div id="results"></div>
+                        <!-- Summary -->
+                        <div id="summary" class="alert alert-info mb-4" role="status">
+                            <i class="fas fa-info-circle me-2" aria-hidden="true"></i>
+                            Upload logs to begin analysis
+                        </div>
+
+                        <!-- Results -->
+                        <div id="gantt-container" style="display:none;"></div>
+                        <div id="results"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Font Awesome JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <script src="/static/main.js"></script>
     <script src="/static/gantt.js"></script>
 </body>

@@ -1,149 +1,128 @@
 const uploadBtn = document.getElementById('btnUpload');
-const searchBtn = document.getElementById('btnSearch');
-const unreadBtn = document.getElementById('btnUnread');
 const ganttBtn = document.getElementById('btnGantt');
+const unreadBtn = document.getElementById('btnUnread');
 const pluginBtn = document.getElementById('btnPlugins');
-let unreadOnly = false;
+const sectionsBtn = document.getElementById('btnSections');
+const sectionSelect = document.getElementById('section');
+
+// Фильтры
+const qInput = document.getElementById('q');
+const levelSelect = document.getElementById('level');
+const tf_req_idInput = document.getElementById('tf_req_id');
+const tf_resourceInput = document.getElementById('tf_resource');
+const ts_fromInput = document.getElementById('ts_from');
+const ts_toInput = document.getElementById('ts_to');
+
+let unreadOnly = true;
 let currentPluginFilter = null;
+let searchTimeout = null;
+let currentResults = [];
+
+// Автоматический поиск
+[qInput, levelSelect, tf_req_idInput, tf_resourceInput, ts_fromInput, ts_toInput, sectionSelect]
+    .forEach(element => {
+        if (element.type === 'select-one' || element.type === 'select-multiple') {
+            element.addEventListener('change', debouncedSearch);
+        } else {
+            element.addEventListener('input', debouncedSearch);
+        }
+    });
 
 uploadBtn.onclick = async () => {
-  const f = document.getElementById('file').files[0];
-  if (!f) return alert('Select file');
-  const fd = new FormData();
-  fd.append('file', f);
-  const r = await fetch('/upload', { method: 'POST', body: fd });
-  const j = await r.json();
-  alert('Inserted: ' + j.inserted);
+    const f = document.getElementById('file').files[0];
+    if (!f) {
+        showNotification('Please select a file', 'warning');
+        return;
+    }
+    const fd = new FormData();
+    fd.append('file', f);
+    try {
+        showNotification('Uploading logs...', 'info');
+        const r = await fetch('/upload', { method: 'POST', body: fd });
+        const j = await r.json();
+        showNotification(`Successfully inserted: ${j.inserted} logs`, 'success');
+        search();
+    } catch (error) {
+        showNotification('Upload failed: ' + error.message, 'danger');
+    }
+};
+
+ganttBtn.onclick = () => showTimeline();
+pluginBtn.onclick = () => showPluginSelector();
+sectionsBtn.onclick = () => showSections();
+
+unreadBtn.onclick = () => {
+    unreadOnly = !unreadOnly;
+    updateUnreadButton();
+    search();
+};
+
+function updateUnreadButton() {
+    if (unreadOnly) {
+        unreadBtn.innerHTML = '<i class="fas fa-eye me-1" aria-hidden="true"></i> Show All';
+        unreadBtn.className = 'btn btn-success me-2';
+        showNotification('Showing only unread logs', 'info');
+    } else {
+        unreadBtn.innerHTML = '<i class="fas fa-eye-slash me-1" aria-hidden="true"></i> Show Unread Only';
+        unreadBtn.className = 'btn btn-outline-secondary me-2';
+    }
 }
 
-searchBtn.onclick = () => search();
-ganttBtn.onclick = () => showTimeline();
-pluginBtn.onclick = () => testPlugin();
-unreadBtn.onclick = () => { unreadOnly = !unreadOnly; search(); }
+function debouncedSearch() {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(search, 500);
+}
 
 async function search() {
-  const q = document.getElementById('q').value;
-  const level = document.getElementById('level').value;
-  const tf_req_id = document.getElementById('tf_req_id').value;
-  const tf_resource = document.getElementById('tf_resource').value;
-  const ts_from = document.getElementById('ts_from').value;
-  const ts_to = document.getElementById('ts_to').value;
-  const section = document.getElementById('section').value;
-  
-  const params = new URLSearchParams();
-  if (q) params.set('q', q);
-  if (level) params.set('level', level);
-  if (tf_req_id) params.set('tf_req_id', tf_req_id);
-  if (tf_resource) params.set('tf_resource', tf_resource);
-  if (ts_from) params.set('ts_from', ts_from);
-  if (ts_to) params.set('ts_to', ts_to);
-  if (section) params.set('section', section);
-  if (unreadOnly) params.set('unread', '1');
-  
-  const r = await fetch('/search?' + params.toString());
-  const arr = await r.json();
-  document.getElementById('gantt-container').style.display = 'none';
-  render(arr);
+    const params = new URLSearchParams();
+    if (qInput.value) params.set('q', qInput.value);
+    if (levelSelect.value) params.set('level', levelSelect.value);
+    if (tf_req_idInput.value) params.set('tf_req_id', tf_req_idInput.value);
+    if (tf_resourceInput.value) params.set('tf_resource', tf_resourceInput.value);
+    if (ts_fromInput.value) params.set('ts_from', ts_fromInput.value);
+    if (ts_toInput.value) params.set('ts_to', ts_toInput.value);
+    if (sectionSelect.value) params.set('section', sectionSelect.value);
+    if (unreadOnly) params.set('unread', '1');
+    
+    try {
+        const r = await fetch('/search?' + params.toString());
+        const arr = await r.json();
+        document.getElementById('gantt-container').style.display = 'none';
+        currentResults = arr;
+        render(arr);
+        updateSummary(arr);
+    } catch (error) {
+        showNotification('Search failed: ' + error.message, 'danger');
+    }
 }
 
-async function showTimeline() {
-  const params = new URLSearchParams();
-  params.set('limit', '1000');
-  
-  const r = await fetch('/search?' + params.toString());
-  const arr = await r.json();
-  document.getElementById('results').innerHTML = '';
-  document.getElementById('gantt-container').style.display = 'block';
-  renderGantt(arr);
+function updateSummary(arr) {
+    const groups = groupBy(arr, it => it.tf_req_id || '__no__');
+    const summary = document.getElementById('summary');
+    summary.innerHTML = `
+        <i class="fas fa-chart-bar me-2" aria-hidden="true"></i>
+        <strong>Results:</strong> ${arr.length} | 
+        <strong>Groups:</strong> ${groups.size} | 
+        <strong>Unique Requests:</strong> ${Array.from(groups.keys()).filter(k => k !== '__no__').length}
+        ${unreadOnly ? ' | <span class="badge bg-warning">Unread Only</span>' : ''}
+    `;
 }
 
-async function testPlugin() {
-  try {
-    const r = await fetch('/plugin/process', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        filter_type: 'errors_only',
-        search_query: ''
-      })
-    });
-    const result = await r.json();
-    alert(`Plugin result: ${result.summary}`);
-  } catch (error) {
-    alert('Plugin error: ' + error.message);
-  }
+function showTimeline() {
+    fetch('/search?limit=1000')
+        .then(r => r.json())
+        .then(arr => {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('gantt-container').style.display = 'block';
+            renderGantt(arr);
+            showNotification('Timeline loaded', 'success');
+        })
+        .catch(error => showNotification('Timeline failed: ' + error.message, 'danger'));
 }
 
-function groupBy(arr, keyFn) {
-  const map = new Map();
-  arr.forEach(item => {
-    const k = keyFn(item);
-    if (!map.has(k)) map.set(k, []);
-    map.get(k).push(item);
-  });
-  return map;
-}
-
-function render(arr) {
-  const results = document.getElementById('results');
-  results.innerHTML = '';
-  const groups = groupBy(arr, it => it.tf_req_id || '__no__');
-  const summary = document.getElementById('summary');
-  summary.innerText = `Results: ${arr.length}, groups: ${groups.size}`;
-
-  groups.forEach((items, gid) => {
-    const gdiv = document.createElement('div');
-    gdiv.className = 'group';
-    const h = document.createElement('h3');
-    h.textContent = `tf_req_id: ${gid} (${items.length})`;
-    gdiv.appendChild(h);
-    items.forEach(it => {
-      const line = document.createElement('div');
-      line.className = 'line ' + (it.level || '');
-      line.innerHTML = `<div class="meta"><small>${it.ts || ''} ${it.level || ''} ${it.tf_resource || ''}</small></div>
-                        <div class="excerpt">${escapeHtml(it.text_excerpt)}</div>
-                        <div class="actions">
-                          <button onclick='expandJson(${it.id})'>Expand JSON</button>
-                          <button onclick='markRead(${it.id})'>Mark read</button>
-                        </div>`;
-      gdiv.appendChild(line);
-    });
-    results.appendChild(gdiv);
-  });
-}
-
-function escapeHtml(s) {
-  if (!s) return '';
-  return s.replace(/&/g, '&amp;').replace(/</g, '<').replace(/>/g, '>');
-}
-
-async function expandJson(id) {
-  const r = await fetch('/json_bodies/' + id);
-  const arr = await r.json();
-  if (!arr.length) {
-    const r2 = await fetch('/search?q=' + encodeURIComponent(`"id":${id}`));
-    const s = await r2.json();
-    const item = s.find(x => x.id === id);
-    if (item) return alert(JSON.stringify(JSON.parse(item.raw_json), null, 2));
-    return alert('No JSON bodies found');
-  }
-  let text = '';
-  arr.forEach(b => {
-    text += `=== ${b.body_type} ===\n` + JSON.stringify(JSON.parse(b.body_json), null, 2) + '\n\n';
-  });
-  alert(text);
-}
-
-async function markRead(id) {
-  await fetch('/mark_read', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ids:[id]}) });
-  search();
-}
-
-pluginBtn.onclick = () => showPluginSelector();
-
-// Функция выбора плагина
 function showPluginSelector() {
     const pluginType = prompt("Choose plugin:\n1. errors_only\n2. warnings_only\n3. group_by_resource\n\nEnter number or type:", "1");
+    if (!pluginType) return;
     
     let filterType = "default";
     switch(pluginType) {
@@ -157,61 +136,332 @@ function showPluginSelector() {
     applyPluginFilter();
 }
 
-// Применить фильтр плагина
 async function applyPluginFilter() {
     if (!currentPluginFilter) return;
     
-    const r = await fetch('/plugin/process', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            filter_type: currentPluginFilter,
-            search_query: document.getElementById('q').value
-        })
-    });
-    
-    const result = await r.json();
-    alert(result.summary);
-    
-    // Показать результаты с учетом фильтра
-    const params = new URLSearchParams();
-    params.set('limit', '1000');
-    
-    // Если фильтр по ошибкам - ищем только ошибки
-    if (currentPluginFilter === 'errors_only') {
-        params.set('level', 'error');
-    } else if (currentPluginFilter === 'warnings_only') {
-        params.set('level', 'warning');
+    try {
+        showNotification('Processing with plugin...', 'info');
+        const r = await fetch('/plugin/process', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                filter_type: currentPluginFilter,
+                search_query: qInput.value
+            })
+        });
+        
+        const result = await r.json();
+        showNotification(result.summary, 'info');
+        
+        const searchR = await fetch('/search?limit=1000');
+        const arr = await searchR.json();
+        document.getElementById('gantt-container').style.display = 'none';
+        currentResults = arr;
+        render(arr);
+        updateSummary(arr);
+    } catch (error) {
+        showNotification('Plugin failed: ' + error.message, 'danger');
     }
-    
-    const searchR = await fetch('/search?' + params.toString());
-    const arr = await searchR.json();
-    document.getElementById('gantt-container').style.display = 'none';
-    render(arr);
 }
-
-const sectionsBtn = document.createElement('button');
-sectionsBtn.id = 'btnSections';
-sectionsBtn.textContent = 'Show Sections';
-sectionsBtn.onclick = showSections;
-document.querySelector('.filters').appendChild(sectionsBtn);
 
 async function showSections() {
-    const r = await fetch('/sections');
-    const sections = await r.json();
-    
-    let html = '<h3>Sections Summary</h3><table border="1" style="width:100%; border-collapse: collapse;">';
-    html += '<tr><th>Section</th><th>Count</th><th>Start Time</th><th>End Time</th></tr>';
-    
-    sections.forEach(s => {
-        html += `<tr>
-            <td>${s.section}</td>
-            <td>${s.count}</td>
-            <td>${s.start_time}</td>
-            <td>${s.end_time}</td>
-        </tr>`;
-    });
-    
-    html += '</table>';
-    document.getElementById('results').innerHTML = html;
+    try {
+        showNotification('Loading sections...', 'info');
+        const r = await fetch('/sections');
+        const sections = await r.json();
+        
+        let html = '<div class="card"><div class="card-header"><h5 class="mb-0">Sections Summary</h5></div><div class="card-body">';
+        html += '<table class="table table-hover"><thead><tr><th>Section</th><th>Count</th><th>Start Time</th><th>End Time</th></tr></thead><tbody>';
+        
+        sections.forEach(s => {
+            html += `<tr>
+                <td><span class="badge bg-${getSectionBadgeColor(s.section)}">${s.section}</span></td>
+                <td><span class="badge bg-secondary">${s.count}</span></td>
+                <td>${s.start_time || 'N/A'}</td>
+                <td>${s.end_time || 'N/A'}</td>
+            </tr>`;
+        });
+        
+        html += '</tbody></table></div></div>';
+        document.getElementById('results').innerHTML = html;
+        showNotification(`Loaded ${sections.length} sections`, 'success');
+    } catch (error) {
+        showNotification('Sections failed: ' + error.message, 'danger');
+    }
 }
+
+function getSectionBadgeColor(section) {
+    const colors = {
+        'plan': 'primary',
+        'apply': 'success',
+        'start': 'warning text-dark',
+        'end': 'info',
+        'refresh': 'secondary'
+    };
+    return colors[section] || 'dark';
+}
+
+function showNotification(message, type) {
+    const container = document.getElementById('notifications-container');
+    
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show mb-2`;
+    alert.style.minWidth = '300px';
+    alert.style.maxWidth = '400px';
+    alert.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : type === 'danger' ? 'exclamation-circle' : 'info-circle'} me-2" aria-hidden="true"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" style="position: absolute; right: 10px; top: 10px;" aria-label="Close"></button>
+    `;
+    
+    container.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+            bsAlert.close();
+        }
+    }, 3000);
+    
+    alert.querySelector('.btn-close').onclick = () => {
+        const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+        bsAlert.close();
+    };
+}
+
+function groupBy(arr, keyFn) {
+    const map = new Map();
+    arr.forEach(item => {
+        const k = keyFn(item);
+        if (!map.has(k)) map.set(k, []);
+        map.get(k).push(item);
+    });
+    return map;
+}
+
+// Состояние групп
+window.groupStates = {};
+
+function toggleGroup(groupId) {
+    window.groupStates[groupId] = !window.groupStates[groupId];
+    const groupElement = document.querySelector(`[data-group-id="${groupId}"]`);
+    if (groupElement) {
+        const body = groupElement.querySelector('.group-body');
+        const toggleButton = groupElement.querySelector('.toggle-btn');
+        
+        if (body && toggleButton) {
+            const isExpanded = window.groupStates[groupId];
+            body.className = isExpanded ? 'group-body card-body p-0' : 'group-body card-body p-0 d-none';
+            toggleButton.innerHTML = `<i class="fas fa-${isExpanded ? 'minus' : 'plus'}" aria-hidden="true"></i>`;
+            toggleButton.setAttribute('aria-label', `${isExpanded ? 'Collapse' : 'Expand'} group ${groupId}`);
+        }
+    }
+}
+
+function expandAllGroups() {
+    const groups = groupBy(currentResults, it => it.tf_req_id || '__no__');
+    groups.forEach((_, key) => window.groupStates[key] = true);
+    render(currentResults);
+}
+
+function collapseAllGroups() {
+    const groups = groupBy(currentResults, it => it.tf_req_id || '__no__');
+    groups.forEach((_, key) => window.groupStates[key] = false);
+    render(currentResults);
+}
+
+function render(arr) {
+    currentResults = arr;
+    const results = document.getElementById('results');
+    results.innerHTML = '';
+    
+    // Кнопки Expand/Collapse All
+    const controls = document.createElement('div');
+    controls.className = 'mb-3 d-flex justify-content-end';
+    controls.innerHTML = `
+        <button class="btn btn-sm btn-outline-primary me-2" onclick="expandAllGroups()" aria-label="Expand all groups">
+            <i class="fas fa-expand me-1" aria-hidden="true"></i>Expand All
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="collapseAllGroups()" aria-label="Collapse all groups">
+            <i class="fas fa-compress me-1" aria-hidden="true"></i>Collapse All
+        </button>
+    `;
+    results.appendChild(controls);
+    
+    const groups = groupBy(arr, it => it.tf_req_id || '__no__');
+    updateSummary(arr);
+
+    groups.forEach((items, gid) => {
+        const isExpanded = window.groupStates[gid] !== false;
+        
+        const gdiv = document.createElement('div');
+        gdiv.className = 'card mb-3 shadow-sm';
+        gdiv.setAttribute('data-group-id', gid);
+        
+        const header = document.createElement('div');
+        header.className = 'card-header bg-light';
+        header.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-sm btn-outline-secondary me-2 toggle-btn" onclick="toggleGroup('${gid}')" aria-label="${isExpanded ? 'Collapse' : 'Expand'} group ${gid}">
+                        <i class="fas fa-${isExpanded ? 'minus' : 'plus'}" aria-hidden="true"></i>
+                    </button>
+                    <h6 class="mb-0">
+                        <i class="fas fa-link me-1" aria-hidden="true"></i>
+                        Request ID: <code>${gid}</code> (${items.length} logs)
+                    </h6>
+                </div>
+                <span class="badge bg-primary">${gid === '__no__' ? 'No Request ID' : 'Grouped'}</span>
+            </div>
+        `;
+        gdiv.appendChild(header);
+        
+        const body = document.createElement('div');
+        body.className = `group-body card-body p-0 ${isExpanded ? '' : 'd-none'}`;
+        
+        items.forEach(it => {
+            const line = document.createElement('div');
+            const isRead = it.read_flag === 1;
+            line.className = `p-3 border-bottom ${getLogLevelClass(it.level)} ${isRead ? 'bg-light opacity-75' : ''}`;
+            line.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1" aria-hidden="true"></i>${it.ts || 'No time'} 
+                        <i class="fas fa-layer-group ms-2 me-1" aria-hidden="true"></i>${it.tf_resource || 'No resource'}
+                    </small>
+                    <div>
+                        <span class="badge bg-${getLogLevelBadgeColor(it.level)}">${it.level || 'unknown'}</span>
+                        <span class="badge bg-info ms-1">${it.section || 'no-section'}</span>
+                        ${isRead ? '<span class="badge bg-success ms-1"><i class="fas fa-check me-1" aria-hidden="true"></i>Read</span>' : '<span class="badge bg-warning ms-1"><i class="fas fa-eye-slash me-1" aria-hidden="true"></i>Unread</span>'}
+                    </div>
+                </div>
+                <div class="excerpt mb-2">${escapeHtml(it.text_excerpt)}</div>
+                <div class="actions">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick='expandJson(${it.id})' aria-label="Expand JSON for log ${it.id}">
+                        <i class="fas fa-expand me-1" aria-hidden="true"></i>Expand JSON
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick='toggleRead(${it.id})' aria-label="${isRead ? 'Mark as unread' : 'Mark as read'}">
+                        <i class="fas fa-${isRead ? 'eye-slash' : 'check'} me-1" aria-hidden="true"></i>${isRead ? 'Mark Unread' : 'Mark Read'}
+                    </button>
+                </div>
+            `;
+            body.appendChild(line);
+        });
+        
+        gdiv.appendChild(body);
+        results.appendChild(gdiv);
+    });
+}
+
+function getLogLevelClass(level) {
+    const classes = {
+        'error': 'border-start border-4 border-danger',
+        'warning': 'border-start border-4 border-warning',
+        'info': 'border-start border-4 border-info',
+        'debug': 'border-start border-4 border-secondary'
+    };
+    return classes[level] || 'border-start border-4 border-light';
+}
+
+function getLogLevelBadgeColor(level) {
+    const colors = {
+        'error': 'danger',
+        'warning': 'warning text-dark',
+        'info': 'info',
+        'debug': 'secondary'
+    };
+    return colors[level] || 'dark';
+}
+
+function escapeHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/</g, '<').replace(/>/g, '>');
+}
+
+async function expandJson(id) {
+    try {
+        showNotification('Loading JSON...', 'info');
+        const r = await fetch('/json_bodies/' + id);
+        const arr = await r.json();
+        
+        if (!arr.length) {
+            // Ищем в текущих результатах
+            const currentLog = currentResults.find(log => log.id === id);
+            if (currentLog) {
+                const modal = createModal('JSON Content', 
+                    `<pre class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;">${JSON.stringify(JSON.parse(currentLog.raw_json), null, 2)}</pre>`
+                );
+                showNotification('JSON loaded successfully', 'success');
+                return;
+            }
+            showNotification('No JSON bodies found', 'warning');
+            return;
+        }
+        
+        let text = '';
+        arr.forEach(b => {
+            text += `=== ${b.body_type} ===\n` + JSON.stringify(JSON.parse(b.body_json), null, 2) + '\n\n';
+        });
+        
+        const modal = createModal('JSON Bodies', 
+            `<pre class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;">${text}</pre>`
+        );
+        showNotification(`Loaded ${arr.length} JSON bodies`, 'success');
+    } catch (error) {
+        showNotification('Error expanding JSON: ' + error.message, 'danger');
+    }
+}
+
+function createModal(title, content) {
+    const modalHtml = `
+        <div class="modal fade" id="jsonModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">${title}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${content}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modalElement = document.getElementById('jsonModal');
+    const modalInstance = new bootstrap.Modal(modalElement);
+    modalInstance.show();
+    modalElement.addEventListener('hidden.bs.modal', () => modalElement.remove());
+}
+
+async function toggleRead(id) {
+    try {
+        const currentLog = currentResults.find(log => log.id === id);
+        if (!currentLog) return;
+        
+        const newReadStatus = currentLog.read_flag === 1 ? 0 : 1;
+        
+        await fetch('/mark_read', { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'}, 
+            body: JSON.stringify({ids:[id]}) 
+        });
+        
+        const action = newReadStatus === 1 ? 'marked as read' : 'marked as unread';
+        showNotification(`Log ${action}`, 'success');
+        currentLog.read_flag = newReadStatus;
+        render(currentResults);
+    } catch (error) {
+        showNotification('Toggle read failed: ' + error.message, 'danger');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.groupStates = {};
+    updateUnreadButton();
+    search();
+});

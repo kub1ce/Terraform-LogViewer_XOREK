@@ -1,14 +1,50 @@
-body { font-family: Arial, sans-serif; background: #f6f7fb; margin: 20px; }
-.container { max-width: 1000px; margin: auto; background: white; padding: 18px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.upload { margin-bottom: 12px; }
-.filters { margin-bottom: 12px; }
-.group { border-top: 1px solid #eee; padding: 8px 0; }
-.line { padding: 8px; margin: 6px 0; border-radius: 6px; background: #fafafa; }
-.line.error { border-left: 6px solid #c62828; }
-.line.warning { border-left: 6px solid #f9a825; }
-.line.debug { border-left: 6px solid #f9a825; }
-.line.info { border-left: 6px solid #2e7d32; }
-.meta { color: #666; font-size: 12px; }
-.excerpt { margin-top: 6px; white-space: pre-wrap; font-family: monospace; font-size: 13px; }
-.actions { margin-top: 8px; }
-button { cursor: pointer; }
+/* Водяной знак XOREK */
+body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('/static/XOREK_LET.svg');
+    background-repeat: repeat;
+    background-position: center;
+    background-size: 150px 150px;
+    opacity: 0.048;
+    z-index: -2;
+    pointer-events: none;
+    transform: rotate(-15deg);
+}
+
+/* Контейнер уведомлений - ФИКСИРОВАННО В ПРАВОМ ВЕРХНЕМ УГЛУ */
+#notifications-container {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    z-index: 9999 !important;
+    width: auto !important;
+    max-width: 400px !important;
+    min-width: 300px !important;
+}
+
+/* Стили для карточек */
+.card {
+    background-color: rgba(255, 255, 255, 0.98);
+}
+
+/* Стили для иконок */
+.fas, .far, .fab {
+    font-family: 'Font Awesome 6 Free' !important;
+    font-weight: 900 !important;
+}
+
+i {
+    font-size: 0.9em;
+    vertical-align: middle;
+}
+
+/* Для основного контента */
+.container {
+    border-radius: 10px;
+    backdrop-filter: blur(5px);
+}
