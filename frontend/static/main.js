@@ -363,7 +363,6 @@ async function analyzeWithAI() {
         const r = await fetch(`/ai/analyze?${params.toString()}`);
         const analysis = await r.json();
         
-        // Создаем модальное окно как в expandJson
         const content = `
             <div class="mb-3">
                 <h5><i class="fas fa-robot me-2"></i>AI Анализ логов</h5>
@@ -733,7 +732,6 @@ document.addEventListener('DOMContentLoaded', function() {
     aiBtn.onclick = () => analyzeWithAI();
     aiBtn.setAttribute('aria-label', 'Запустить AI анализ логов');
     
-    // Вставляем перед первой кнопкой
     const buttonRow = document.querySelector('.col-12');
     if (buttonRow) {
         buttonRow.insertBefore(aiBtn, buttonRow.firstChild);

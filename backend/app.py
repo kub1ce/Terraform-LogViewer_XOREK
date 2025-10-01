@@ -3,7 +3,6 @@ from pathlib import Path
 import sys
 import os
 
-# Добавь путь к плагинам
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
@@ -18,14 +17,12 @@ from typing import List, Dict
 try:
     import grpc
     
-    # Добавляем путь к папке plugins
     plugins_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'plugins')
     sys.path.insert(0, plugins_path)
     
     import plugin_pb2
     import plugin_pb2_grpc
     
-    # Возвращаем путь обратно
     sys.path.remove(plugins_path)
     
     GRPC_AVAILABLE = True

@@ -16,7 +16,7 @@ body::after {
     transform: rotate(-15deg);
 }
 
-/* Контейнер уведомлений - ФИКСИРОВАННО В ПРАВОМ ВЕРХНЕМ УГЛУ */
+/* Контейнер уведомлений */
 #notifications-container {
     position: fixed !important;
     top: 20px !important;
@@ -49,7 +49,6 @@ i {
     backdrop-filter: blur(5px);
 }
 
-/* Стиль для ИИ кнопки - ГРАДИЕНТНЫЙ */
 .btn-ai {
     background: linear-gradient(135deg, #00c6ff 0%, #00ffa6 100%);
     border: none;
@@ -79,7 +78,6 @@ i {
     box-shadow: 0 2px 6px rgba(0, 114, 255, 0.2);
 }
 
-/* Анимация при наведении */
 .btn-ai::before {
     content: '';
     position: absolute;
@@ -95,12 +93,10 @@ i {
     left: 100%;
 }
 
-/* Дополнительный эффект при клике */
 .btn-ai:active::before {
     left: -100%;
 }
 
-/* Для других состояний */
 .btn-ai:disabled {
     background: linear-gradient(135deg, #80d4ff 0%, #80a8ff 100%);
     opacity: 0.6;

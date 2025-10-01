@@ -24,4 +24,4 @@ def test_custom_ai():
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
-    test_custom_ai()
+    test_custom_ai() 

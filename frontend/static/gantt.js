@@ -189,7 +189,6 @@ function loadJsonBodiesForLog(logId, containerId) {
         });
 }
 
-// Функция переключения статуса "прочитано" из диаграммы
 function toggleReadFromGantt(id, button) {
     const currentLog = currentResults.find(log => log.id === id);
     if (!currentLog) return;
@@ -203,18 +202,14 @@ function toggleReadFromGantt(id, button) {
     })
     .then(response => response.json())
     .then(result => {
-        // Обновляем статус в текущих результатах
         currentLog.read_flag = newReadStatus;
         
-        // Обновляем кнопку
         button.className = `btn btn-${newReadStatus === 1 ? 'secondary' : 'success'}`;
         button.innerHTML = `<i class="fas fa-${newReadStatus === 1 ? 'eye-slash' : 'check'} me-1"></i>${newReadStatus === 1 ? 'Mark Unread' : 'Mark Read'}`;
         
-        // Показываем уведомление
         const action = newReadStatus === 1 ? 'marked as read' : 'marked as unread';
         showNotification(`Log ${action}`, 'success');
         
-        // Обновляем диаграмму если она открыта
         if (document.getElementById('gantt-container').style.display !== 'none') {
             showTimeline();
         }
@@ -224,7 +219,6 @@ function toggleReadFromGantt(id, button) {
     });
 }
 
-// Вспомогательные функции
 function groupBy(arr, keyFn) {
     const map = new Map();
     arr.forEach(item => {

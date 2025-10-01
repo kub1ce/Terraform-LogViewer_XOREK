@@ -4,32 +4,109 @@ Terraform LogViewer: от хаоса к порядку
 
 При масштабных развертывании инфраструктуры Terraform-логи растут до десятков мегабайт и содержат разнородные по формату записи: сообщения от планирования (plan) и применения (apply), журналы HTTP-запросов к провайдерам, предупреждения и ошибки. Отсутствие единого интерфейса для быстрого обнаружения аномалий, трассировки выполнения запросов и детального анализа JSON body усложняет работу техподдержки: приходится вручную сканировать огромные текстовые файлы либо писать ad-hoc скрипты, что увеличивает время диагностики и приводит к задержкам при восстановлении сервисов.
 
-## Запуск локально
+> Инструмент для просмотра и анализа логов Terraform в удобном интерфейсе.
 
-1. Создайте окружение и установите зависимости:
+## 🚀 Возможности
 
-    ```bash
-    python -m venv .venv
-    source .venv/bin/activate   # Windows: .venv\\Scripts\\activate
-    pip install -r requirements.txt
-    ```
+- Парсинг логов `terraform plan/apply/destroy`
+- Хранение в базе данных
+- REST API для интеграции с другими системами
+- Веб-интерфейс для просмотра логов
+- Запуск в Docker для кросс-платформенной совместимости
 
-2. Запустите сервер:
+---
 
-    ```bash
-    uvicorn backend.app:app --reload --host 0.0.0.0 --port 8000
-    ```
-
-3. Откройте в браузере: `http://127.0.0.1:8000`
-
-4. Загрузите `test_data/sample_logs.jsonl` через форму Upload.
-
-5. Используйте поиск и фильтры на странице.
-
-## Docker
+## 🏗 Архитектура
 
 ```bash
-docker build -t terraform-logviewer .
-docker run -p 8000:8000 terraform-logviewer
-# в теории
+
+Terraform Logs
+    │
+    ▼
+┌─────────────┐
+│   Парсер    │ → нормализует логи
+└─────────────┘
+    │
+    ▼
+┌─────────────┐
+│  Хранилище  │ → база данных / файлы
+└─────────────┘
+    │
+    ▼
+┌─────────────┐
+│    API      │ → REST/JSON
+└─────────────┘
+    │
+    ▼
+┌─────────────┐
+│ Веб-клиент  │ → UI для просмотра
+└─────────────┘
+
+```
+
+---
+
+## ⚙️ Установка и запуск
+
+### Вариант 1. Docker (рекомендуется)
+
+```bash
+git clone https://github.com/kub1ce/Terraform-LogViewer_XOREK.git
+cd Terraform-LogViewer_XOREK
+docker-compose up --build
+````
+
+> ### ! ДЛЯ ДОСТУПА К AI-ФУНКЦИОНАЛУ ДОБАВЬТЕ СВОИ API КЛЮЧИ В `.env` ФАЙЛ
+
+После запуска:
+
+- API доступно на `http://localhost:8000`
+- Веб-интерфейс доступен на `http://localhost:8080`
+
+### Вариант 2. Локально (без Docker)
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+
+---
+
+## 📦 Структура проекта
+
+```bash
+Terraform-LogViewer_XOREK/
+├── backend/                # серверная часть
+│   ├── app.py              # основной сервер
+│   ├── parser.py           # парсинг логов
+│   ├── storage.py          # хранение данных
+│   ├── ai_analyzer.py      # анализатор на основе Custom AI
+│   ├── ai_analyzer_openai.py  # анализатор на основе OpenAI GPT
+│── plugins/                # плагины gRPC
+│   ├── plugin.proto        # протобуфер для gRPC
+│   ├── plugin_pb2.py       # сгенерированные protobuf классы
+│   ├── plugin_pb2_grpc.py  # сгенерированные gRPC стабы
+│   ├── plugin_server.py    # сервер плагинов
+│   └── testplugin.py       # тест работоспособности плагинов
+├── frontend/               # клиентская часть
+│   ├── templates/          # HTML шаблоны
+│   │   └── index.html      # главная страница
+│   └── static/             # статические файлы
+│       ├── css/
+│       │   └── style.css   # стили
+│       ├── js/
+│       │   ├── main.js     # основной JavaScript
+│       │   └── gantt.js    # диаграмма Ганта
+│       └── XOREK_LET.svg   # водяной знак
+├── test_data/              # тестовые данные
+│   └── sample.log          # пример лог-файла
+├── .env                    # переменные окружения
+├── .gitignore              # игнорируемые файлы
+├── Dockerfile              # контейнеризация backend
+├── docker-compose.yml      # оркестрация сервисов
+├── README.md               # документация
+├── requirements.txt        # зависимости Python
+└── logs.db                 # база данных SQLite
 ```

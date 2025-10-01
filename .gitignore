@@ -7,3 +7,4 @@ logs.db-wal
 test_data/sample_logs.jsonl
 .env
 .vscode/
+test_hf_api.py

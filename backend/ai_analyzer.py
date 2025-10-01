@@ -10,7 +10,7 @@ load_dotenv()
 
 class CustomAIAnalyzer:
     def __init__(self):
-        self.api_key = os.getenv('CUSTOM_AI_API_KEY')  # Твой ключ
+        self.api_key = os.getenv('CUSTOM_AI_API_KEY')
         self.url = "https://api.intelligence.io.solutions/api/v1/chat/completions"
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
