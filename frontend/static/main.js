@@ -17,6 +17,7 @@ let unreadOnly = true;
 let currentPluginFilter = null;
 let searchTimeout = null;
 let currentResults = [];
+let selectedAIModel = 'openai'; // Глобальная переменная для выбранной модели
 
 // Автоматический поиск
 [qInput, levelSelect, tf_req_idInput, tf_resourceInput, ts_fromInput, ts_toInput, sectionSelect]
@@ -310,15 +311,54 @@ function showNotification(message, type) {
     };
 }
 
+// Функция загрузки доступных моделей
+async function loadAImodels() {
+    try {
+        const r = await fetch('/ai/models');
+        const models = await r.json();
+        
+        // Создаем селектор моделей
+        const modelSelector = document.createElement('select');
+        modelSelector.id = 'aiModelSelector';
+        modelSelector.className = 'form-select form-select-sm me-2';
+        modelSelector.style.width = 'auto';
+        
+        models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = `${model.name} ${model.available ? '' : '(API key required)'}`;
+            option.disabled = !model.available;
+            modelSelector.appendChild(option);
+        });
+        
+        // Устанавливаем обработчик изменения
+        modelSelector.onchange = function() {
+            selectedAIModel = this.value;
+            showNotification(`Selected AI model: ${this.options[this.selectedIndex].text}`, 'info');
+        };
+        
+        // Вставляем селектор перед кнопкой AI
+        const buttonRow = document.querySelector('.col-12');
+        if (buttonRow) {
+            buttonRow.insertBefore(modelSelector, document.getElementById('btnAI'));
+        }
+        
+    } catch (error) {
+        console.error('Error loading AI models:', error);
+    }
+}
+
+// Обновляем функцию анализа с выбором модели
 async function analyzeWithAI() {
     try {
-        showNotification('AI анализ логов...', 'info');
+        showNotification(`AI анализ логов (${selectedAIModel})...`, 'info');
         
         // Получаем текущие логи с учетом фильтров
         const q = qInput.value;
         const params = new URLSearchParams();
         if (q) params.set('q', q);
-        params.set('limit', '100'); // Ограничиваем количество для анализа
+        params.set('limit', '100');
+        params.set('model', selectedAIModel); // Передаем выбранную модель
         
         const r = await fetch(`/ai/analyze?${params.toString()}`);
         const analysis = await r.json();
@@ -327,6 +367,11 @@ async function analyzeWithAI() {
         const content = `
             <div class="mb-3">
                 <h5><i class="fas fa-robot me-2"></i>AI Анализ логов</h5>
+                <div class="alert alert-info">
+                    <i class="fas fa-microchip me-2"></i>
+                    Использована модель: <strong>${analysis.ai_model || selectedAIModel}</strong>
+                    ${analysis.confidence ? `<span class="badge bg-primary ms-2">Уверенность: ${(analysis.confidence * 100).toFixed(1)}%</span>` : ''}
+                </div>
             </div>
             
             <div class="mb-3">
@@ -363,15 +408,6 @@ async function analyzeWithAI() {
                 <pre class="bg-light p-2 rounded">${JSON.stringify(analysis.severity_distribution || {}, null, 2)}</pre>
             </div>
             
-            <div class="mb-3">
-                <strong>Уверенность ИИ:</strong>
-                <div class="progress">
-                    <div class="progress-bar" role="progressbar" style="width: ${analysis.confidence ? (analysis.confidence * 100) : 75}%;">
-                        ${(analysis.confidence ? (analysis.confidence * 100) : 75).toFixed(1)}%
-                    </div>
-                </div>
-            </div>
-            
             ${analysis.raw_response ? `
                 <div>
                     <strong>Полный ответ ИИ:</strong>
@@ -381,7 +417,7 @@ async function analyzeWithAI() {
         `;
         
         createModal('AI Анализ Terraform Логов', content);
-        showNotification('AI анализ завершен', 'success');
+        showNotification(`AI анализ завершен (${analysis.ai_model || selectedAIModel})`, 'success');
         
     } catch (error) {
         showNotification('Ошибка AI анализа: ' + error.message, 'danger');
@@ -679,6 +715,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.groupStates = {};
     updateUnreadButton();
     search();
+
+    loadAImodels();
 });
 
 document.addEventListener('DOMContentLoaded', function() {

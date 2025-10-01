@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.storage import Storage
 from backend.parser import parse_line
 from backend.ai_analyzer import CustomAIAnalyzer
+from backend.ai_analyzer_openai import OpenAIAIAnalyzer
 from typing import List, Dict
 
 try:
@@ -43,7 +44,8 @@ app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 DB_PATH = "logs.db"
 store = Storage(DB_PATH)
 
-ai_analyzer = CustomAIAnalyzer() 
+ai_analyzer = CustomAIAnalyzer()
+openai_ai_analyzer = OpenAIAIAnalyzer()
 
 def call_grpc_plugin(logs: List[Dict], filter_type: str = "default"):
     try:
@@ -77,11 +79,26 @@ def call_grpc_plugin(logs: List[Dict], filter_type: str = "default"):
         return logs  # Возврат оригинальных данных при ошибке
 
 
+@app.get("/ai/models")
+async def get_ai_models():
+    """Получить список доступных моделей ИИ"""
+    models = [
+        {"id": "openai", "name": "OpenAI GPT-3.5", "description": "OpenAI GPT-3.5 Turbo", "available": bool(os.getenv('OPENAI_API_KEY'))},
+        {"id": "custom", "name": "Custom AI", "description": "Llama 4 Maverick-17B-128E Instruct FP8", "available": True},
+    ]
+    return JSONResponse(models)
+
+
 @app.get("/ai/analyze")
-async def ai_analyze(q: str = None, limit: int = 100):
-    """ИИ анализ логов"""
+async def ai_analyze(q: str = None, limit: int = 100, model: str = "custom"):
+    """ИИ анализ логов с выбором модели"""
     try:
-        insights = ai_analyzer.get_ai_insights(query=q, limit=limit)
+        if model == "openai":
+            insights = openai_ai_analyzer.get_ai_insights(query=q, limit=limit)
+        else:
+            insights = CustomAIAnalyzer.get_ai_insights(query=q, limit=limit)
+        
+        insights['selected_model'] = model
         return JSONResponse(insights)
     except Exception as e:
         return JSONResponse({
@@ -89,7 +106,8 @@ async def ai_analyze(q: str = None, limit: int = 100):
             "summary": "AI analysis temporarily unavailable",
             "issues": [],
             "recommendations": ["Manual analysis required"],
-            "severity_distribution": {}
+            "severity_distribution": {},
+            "selected_model": model
         }, status_code=500)
 
 
@@ -108,7 +126,7 @@ async def ai_recommend(payload: dict):
             "Review resource dependencies",
             "Increase API rate limits if applicable"
         ]
-        
+
         return JSONResponse({
             "error": error_text,
             "recommendations": recommendations,
