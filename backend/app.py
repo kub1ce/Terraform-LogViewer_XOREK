@@ -3,6 +3,8 @@ from pathlib import Path
 import sys
 import os
 
+# Добавь путь к плагинам
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
@@ -11,7 +13,6 @@ from backend.storage import Storage
 from backend.parser import parse_line
 from typing import List, Dict
 
-# Импортируй gRPC плагины
 try:
     import grpc
     import plugins.plugin_pb2 as plugin_pb2

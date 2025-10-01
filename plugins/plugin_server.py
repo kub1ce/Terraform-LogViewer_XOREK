@@ -2,13 +2,16 @@ import grpc
 from concurrent import futures
 import sys
 import os
+import signal
 
-# Добавь путь к текущей директории
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Импортируй proto файлы
-import plugin_pb2
-import plugin_pb2_grpc
+try:
+    import plugin_pb2
+    import plugin_pb2_grpc
+    print("Proto files imported successfully")
+except ImportError as e:
+    print(f"Import error: {e}")
 
 class LogProcessorServicer(plugin_pb2_grpc.LogProcessorServicer):
     def ProcessLogs(self, request, context):
@@ -56,14 +59,34 @@ class LogProcessorServicer(plugin_pb2_grpc.LogProcessorServicer):
         print(f"Returning {len(filtered)} logs")
         return response
 
+# Глобальная переменная для сервера
+server_instance = None
+
+def signal_handler(sig, frame):
+    print('Shutting down gRPC server...')
+    if server_instance:
+        server_instance.stop(5)  # Остановить за 5 секунд
+    sys.exit(0)
+
 def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    plugin_pb2_grpc.add_LogProcessorServicer_to_server(LogProcessorServicer(), server)
-    server.add_insecure_port('[::]:50051')
-    server.start()
+    global server_instance
+    
+    # Регистрируем обработчик сигналов
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    server_instance = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    plugin_pb2_grpc.add_LogProcessorServicer_to_server(LogProcessorServicer(), server_instance)
+    server_instance.add_insecure_port('[::]:50051')
+    server_instance.start()
     print("gRPC Plugin Server started on port 50051")
-    print("Ready to accept connections...")
-    server.wait_for_termination()
+    print("Ready to accept connections... (Press Ctrl+C to stop)")
+    
+    try:
+        server_instance.wait_for_termination()
+    except KeyboardInterrupt:
+        print("Server interrupted, shutting down...")
+        server_instance.stop(5)
 
 if __name__ == '__main__':
     serve()

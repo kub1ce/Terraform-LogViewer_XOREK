@@ -6,6 +6,7 @@ body { font-family: Arial, sans-serif; background: #f6f7fb; margin: 20px; }
 .line { padding: 8px; margin: 6px 0; border-radius: 6px; background: #fafafa; }
 .line.error { border-left: 6px solid #c62828; }
 .line.warning { border-left: 6px solid #f9a825; }
+.line.debug { border-left: 6px solid #f9a825; }
 .line.info { border-left: 6px solid #2e7d32; }
 .meta { color: #666; font-size: 12px; }
 .excerpt { margin-top: 6px; white-space: pre-wrap; font-family: monospace; font-size: 13px; }
