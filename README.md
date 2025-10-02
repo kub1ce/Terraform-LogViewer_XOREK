@@ -66,10 +66,11 @@ docker-compose up --build
 ### Вариант 2. Локально (без Docker)
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
-python app.py
+python plugins/plugin_server.py
+
+# НЕ ЗАВЕРШАЯ РАБОТУ 1 СКРИПТА, откройте вторую консоль в той же директории и запустите основной скрипт
+uvicorn backend.app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ---

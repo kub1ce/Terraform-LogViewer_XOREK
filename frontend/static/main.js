@@ -521,7 +521,7 @@ function render(arr) {
     currentResults = arr;
     const results = document.getElementById('results');
     results.innerHTML = '';
-    
+
     // Кнопки Expand/Collapse All
     const controls = document.createElement('div');
     controls.className = 'mb-3 d-flex justify-content-end';
@@ -534,17 +534,29 @@ function render(arr) {
         </button>
     `;
     results.appendChild(controls);
-    
+
     const groups = groupBy(arr, it => it.tf_req_id || '__no__');
     updateSummary(arr);
 
     groups.forEach((items, gid) => {
         const isExpanded = window.groupStates[gid] !== false;
-        
+
+        // Подсчет количества логов по уровням для текущей группы
+        const levelCounts = {};
+        items.forEach(item => {
+            const level = item.level || 'unknown';
+            levelCounts[level] = (levelCounts[level] || 0) + 1;
+        });
+
+        // Создание строки с бейджиками для уровней
+        const levelBadges = Object.entries(levelCounts).map(([level, count]) => {
+            return `<span class="badge bg-${getLogLevelBadgeColor(level)} me-1">${level}: ${count}</span>`;
+        }).join('');
+
         const gdiv = document.createElement('div');
         gdiv.className = 'card mb-3 shadow-sm';
         gdiv.setAttribute('data-group-id', gid);
-        
+
         const header = document.createElement('div');
         header.className = 'card-header bg-light';
         header.innerHTML = `
@@ -558,14 +570,17 @@ function render(arr) {
                         Request ID: <code>${gid}</code> (${items.length} logs)
                     </h6>
                 </div>
-                <span class="badge bg-primary">${gid === '__no__' ? 'No Request ID' : 'Grouped'}</span>
+                <div>
+                    <span class="badge bg-primary me-2">${gid === '__no__' ? 'No Request ID' : 'Grouped'}</span>
+                    ${levelBadges}
+                </div>
             </div>
         `;
         gdiv.appendChild(header);
-        
+
         const body = document.createElement('div');
         body.className = `group-body card-body p-0 ${isExpanded ? '' : 'd-none'}`;
-        
+
         items.forEach(it => {
             const line = document.createElement('div');
             const isRead = it.read_flag === 1;
@@ -594,7 +609,7 @@ function render(arr) {
             `;
             body.appendChild(line);
         });
-        
+
         gdiv.appendChild(body);
         results.appendChild(gdiv);
     });
