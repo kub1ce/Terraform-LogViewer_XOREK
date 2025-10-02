@@ -86,14 +86,61 @@ async def get_ai_models():
     return JSONResponse(models)
 
 
+# @app.get("/ai/analyze")
+# async def ai_analyze(q: str = None, limit: int = 100, model: str = "custom"):
+#     """ИИ анализ логов с выбором модели"""
+#     try:
+#         if model == "openai":
+#             insights = openai_ai_analyzer.get_ai_insights(query=q, limit=limit)
+#         else:
+#             insights = CustomAIAnalyzer.get_ai_insights(query=q, limit=limit)
+        
+#         insights['selected_model'] = model
+#         return JSONResponse(insights)
+#     except Exception as e:
+#         return JSONResponse({
+#             "error": str(e),
+#             "summary": "AI analysis temporarily unavailable",
+#             "issues": [],
+#             "recommendations": ["Manual analysis required"],
+#             "severity_distribution": {},
+#             "selected_model": model
+#         }, status_code=500)
+
+
+# @app.post("/ai/recommend")
+# async def ai_recommend(payload: dict):
+#     """Получить ИИ рекомендации по конкретной ошибке"""
+#     error_text = payload.get('error_text', '')
+#     if not error_text:
+#         return JSONResponse({"recommendations": ["Please provide error text"]})
+    
+#     try:
+#         # Mock рекомендации (в реальности это будет ИИ вызов)
+#         recommendations = [
+#             "Check Terraform configuration files",
+#             "Verify provider credentials",
+#             "Review resource dependencies",
+#             "Increase API rate limits if applicable"
+#         ]
+
+#         return JSONResponse({
+#             "error": error_text,
+#             "recommendations": recommendations,
+#             "confidence": 0.9
+#         })
+#     except Exception as e:
+#         return JSONResponse({"error": str(e), "recommendations": []})
+
 @app.get("/ai/analyze")
 async def ai_analyze(q: str = None, limit: int = 100, model: str = "custom"):
-    """ИИ анализ логов с выбором модели"""
+    """ИИ анализ логов"""
+
     try:
         if model == "openai":
             insights = openai_ai_analyzer.get_ai_insights(query=q, limit=limit)
         else:
-            insights = CustomAIAnalyzer.get_ai_insights(query=q, limit=limit)
+            insights = ai_analyzer.get_ai_insights(query=q, limit=limit)
         
         insights['selected_model'] = model
         return JSONResponse(insights)
@@ -103,8 +150,7 @@ async def ai_analyze(q: str = None, limit: int = 100, model: str = "custom"):
             "summary": "AI analysis temporarily unavailable",
             "issues": [],
             "recommendations": ["Manual analysis required"],
-            "severity_distribution": {},
-            "selected_model": model
+            "severity_distribution": {}
         }, status_code=500)
 
 
@@ -114,7 +160,6 @@ async def ai_recommend(payload: dict):
     error_text = payload.get('error_text', '')
     if not error_text:
         return JSONResponse({"recommendations": ["Please provide error text"]})
-    
     try:
         # Mock рекомендации (в реальности это будет ИИ вызов)
         recommendations = [
