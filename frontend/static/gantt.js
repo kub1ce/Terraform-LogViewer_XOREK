@@ -34,12 +34,14 @@ function renderGantt(data) {
             position:relative;
         `;
         
+        
         const idDiv = document.createElement('div');
         idDiv.style.cssText = 'width:250px; padding:5px; font-size:12px; font-weight:bold; color:#333;';
         idDiv.textContent = reqId;
         
         const timelineDiv = document.createElement('div');
-        timelineDiv.style.cssText = 'flex:1; position:relative; height:100%;';
+        // timelineDiv.style.cssText = 'flex:1; position:relative; height:100%;';
+        timelineDiv.style.cssText = `flex-grow: ${ganttScale}; position:relative; height:100%; flex-shrink: 1; width: 110%`;
         
         // Рассчитываем временные метки
         const allTimes = data.filter(i => i.ts).map(i => new Date(i.ts));
@@ -247,4 +249,162 @@ function getLogLevelBadgeColor(level) {
         'debug': 'secondary'
     };
     return colors[level] || 'dark';
+}
+
+// Глобальная переменная для хранения уровня масштаба
+let ganttScale = 10.0; // 10.0 = 1000% масштаб (10x)
+const scaleStep = 1.0; // Шаг изменения масштаба (2x)
+const minScale = 5.0;  // Минимальный масштаб (5x)
+const maxScale = 24.0;  // Максимальный масштаб (24x)
+
+// Функция для обновления масштаба
+function updateScale(newScale) {
+    ganttScale = Math.max(minScale, Math.min(maxScale, newScale));
+    if (document.getElementById('gantt-container').style.display !== 'none') {
+        showTimeline();
+    }
+    const scaleSlider = document.getElementById('ganttScaleSlider');
+    if (scaleSlider) {
+        scaleSlider.value = ganttScale;
+    }
+}
+
+function zoomIn() {
+    updateScale(ganttScale + scaleStep);
+}
+
+function zoomOut() {
+    updateScale(ganttScale - scaleStep);
+}
+
+function renderGantt(data) {
+    const container = document.getElementById('gantt-container');
+    container.innerHTML = `
+        <h3>Timeline Visualization</h3>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div></div> <!-- Пустой div для выравнивания -->
+            <div class="d-flex align-items-center">
+                <button class="btn btn-sm btn-outline-secondary me-2" onclick="zoomOut()" aria-label="Zoom Out">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <input type="range" id="ganttScaleSlider" class="form-range" min="${minScale}" max="${maxScale}" step="${scaleStep}" value="${ganttScale}" 
+                       style="width: 150px;" oninput="updateScale(parseFloat(this.value))" aria-label="Zoom slider">
+                <span class="mx-2" id="scaleValueDisplay">${(ganttScale).toFixed(1)}x</span> <!-- Дисплей текущего масштаба -->
+                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="zoomIn()" aria-label="Zoom In">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+        <div id="gantt-chart"></div>
+    `;
+
+    const scaleDisplay = document.getElementById('scaleValueDisplay');
+    if (scaleDisplay) {
+        scaleDisplay.textContent = `${ganttScale.toFixed(1)}x`;
+    }
+
+    const chart = document.getElementById('gantt-chart');
+    chart.style.height = '600px';
+    chart.style.border = '1px solid #ccc';
+    chart.style.position = 'relative';
+    chart.style.overflowX = 'auto';
+    chart.style.overflowY = 'auto';
+
+    const groups = groupBy(data, item => item.tf_req_id || 'unknown');
+
+    let row = 0;
+    groups.forEach((items, reqId) => {
+        if (!items[0].ts) return;
+
+        const times = items.filter(i => i.ts).map(i => new Date(i.ts));
+        if (times.length === 0) return;
+
+        const groupDiv = document.createElement('div');
+        groupDiv.style.cssText = `
+            display:flex; 
+            height:60px; 
+            border-bottom:1px solid #eee; 
+            align-items:center;
+            margin-bottom:2px;
+            position:relative;
+        `;
+
+        const idDiv = document.createElement('div');
+        idDiv.style.cssText = 'width:250px; padding:5px; font-size:12px; font-weight:bold; color:#333;';
+        idDiv.textContent = reqId;
+
+        const timelineDiv = document.createElement('div');
+        timelineDiv.style.cssText = `
+            position:relative; 
+            height:100%;
+            flex-grow: ${ganttScale}; /* Ширина столбца данных пропорциональна масштабу */
+            flex-shrink: 0; /* Не сжимать, если место заканчивается */
+        `;
+
+        const allTimes = data.filter(i => i.ts).map(i => new Date(i.ts));
+        const globalMin = Math.min(...allTimes);
+        const globalMax = Math.max(...allTimes);
+        const totalDuration = globalMax - globalMin;
+
+        items.forEach(item => {
+            if (!item.ts) return;
+
+            const startTime = new Date(item.ts);
+            const position = ((startTime - globalMin) / totalDuration) * 100;
+            const baseWidth = 3; 
+            const scaledWidth = baseWidth * ganttScale; 
+            const width = Math.max(1, scaledWidth);
+
+            const bar = document.createElement('div');
+            bar.style.cssText = `
+                position:absolute;
+                left:${position}%;
+                top:20px;
+                width:${width}px; /* Используем масштабированную ширину */
+                height:20px;
+                background-color:${getColorForLevel(item.level)};
+                border-radius:2px;
+                cursor:pointer;
+                transition: all 0.2s;
+                opacity: ${item.read_flag === 1 ? '0.5' : '1'};
+            `;
+            bar.title = `${item.level} - ${item.ts} - ${item.text_excerpt?.substring(0, 30) || ''}...`;
+
+            bar.onclick = () => showLogDetailsModal(item);
+
+            bar.onmouseover = () => {
+                bar.style.transform = 'scale(1.5)';
+                bar.style.zIndex = '10';
+            };
+
+            bar.onmouseout = () => {
+                bar.style.transform = 'scale(1)';
+                bar.style.zIndex = '1';
+            };
+
+            timelineDiv.appendChild(bar);
+        });
+
+        groupDiv.appendChild(idDiv);
+        groupDiv.appendChild(timelineDiv);
+        chart.appendChild(groupDiv);
+
+        row++;
+    });
+}
+
+function showTimelineForScale() {
+    isScaleUpdate = true;
+    showTimeline();
+}
+
+function updateScale(newScale) {
+    ganttScale = Math.max(minScale, Math.min(maxScale, newScale));
+    if (document.getElementById('gantt-container').style.display !== 'none') {
+        showTimelineForScale();
+    }
+    const scaleSlider = document.getElementById('ganttScaleSlider');
+    if (scaleSlider) {
+        scaleSlider.value = ganttScale;
+    }
 }

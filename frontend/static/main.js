@@ -115,8 +115,8 @@ function showTimeline() {
         .then(arr => {
             document.getElementById('results').innerHTML = '';
             document.getElementById('gantt-container').style.display = 'block';
-            renderGantt(arr);
-            showNotification('Timeline loaded', 'success');
+            renderGantt(arr); // renderGantt теперь в gantt.js
+            // showNotification('Timeline loaded', 'success');
         })
         .catch(error => showNotification('Timeline failed: ' + error.message, 'danger'));
 }
